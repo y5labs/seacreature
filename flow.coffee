@@ -56,6 +56,9 @@ copy = unit emit: (e, next) ->
   next extend yes, {}, e
 map = (fn) -> unit emit: (e, next) ->
   next fn e
+run = (fn) ->
+  emit: (e) -> fn e
+  copy: -> run fn
 
 # emit events with events for last ms
 contexttime = (ms) ->
@@ -138,7 +141,7 @@ samplecount = (count) ->
       if index is count
         next e
         index = 0
-    copy: samplecount count
+    copy: -> samplecount count
 # emit only when selected value changes from event to event
 changed = (selector, initial) ->
   previous = initial
@@ -248,6 +251,34 @@ rollup = (count, ms) ->
     twin k.copy() for k in kids
     twin
   res
+# emit first count events within ms, if more ignore all after ms since first event
+throttle = (count, ms) ->
+  kids = []
+  handle = null
+  events = []
+  drain = ->
+    events = []
+    handle = null
+  res = (k) ->
+    kids.push k
+    res
+  res.emit = (e) ->
+    if handle?
+      events.push e
+      return
+    events.push e
+    events = events.filter (item) ->
+      (e.time - item.time) < ms
+    if events.length <= count
+      k.emit e for k in kids
+      return
+    handle = setTimeout drain, ms + events[0].time - e.time
+    null
+  res.copy = ->
+    twin = throttle count, ms
+    twin k.copy() for k in kids
+    twin
+  res
 
 log =
   emit: (e) -> console.log e
@@ -257,39 +288,37 @@ error =
   emit: (e) -> console.error e
   copy: -> error
 
-# TODO:
-# Rate, stats
-# Input (UDP, etc. ProtoBuf)
-# Index, expired
-# Email, txt, alert, pagerduty, storage
-# Dashboard
-module.exports =
-  extend: extend
-  now: now
-  seconds: (n) -> n * 1000
-  minutes: (n) -> n * 60000
-  hours: (n) -> n * 360000
-  days: (n) -> n * 8640000
-  unit: unit
-  stream: stream
-  filter: filter
-  tagged: tagged
-  taggedany: taggedany
-  taggedall: taggedall
-  each: each
-  copy: copy
-  map: map
-  contexttime: contexttime
-  contextcount: contextcount
-  grouptime: grouptime
-  groupcount: groupcount
-  sampletime: sampletime
-  samplecount: samplecount
-  changed: changed
-  settle: settle
-  debounce: debounce
-  combine: combine
-  split: split
-  rollup: rollup
-  log: log
-  error: error
+result = stream
+result.extend = extend
+result.now = now
+result.seconds = (n) -> n * 1000
+result.minutes = (n) -> n * 60000
+result.hours = (n) -> n * 360000
+result.days = (n) -> n * 8640000
+result.unit = unit
+result.stream = stream
+result.filter = filter
+result.tagged = tagged
+result.taggedany = taggedany
+result.taggedall = taggedall
+result.each = each
+result.copy = copy
+result.map = map
+result.run = run
+result.contexttime = contexttime
+result.contextcount = contextcount
+result.grouptime = grouptime
+result.groupcount = groupcount
+result.sampletime = sampletime
+result.samplecount = samplecount
+result.changed = changed
+result.settle = settle
+result.debounce = debounce
+result.combine = combine
+result.split = split
+result.rollup = rollup
+result.throttle = throttle
+result.log = log
+result.error = error
+
+module.exports = result

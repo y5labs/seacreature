@@ -1,6 +1,7 @@
 fs = require 'fs'
 net = require 'net'
 tls = require 'tls'
+ndjson = require 'ndjson'
 
 getcert = (pathname) ->
   if pathname instanceof Array
@@ -21,12 +22,20 @@ module.exports =
     tlsClient = tls.connect port, address, certificates
     tlsClient.setEncoding 'utf8'
 
-    send: (message, cb) ->
-      tlsClient.write JSON.stringify message
-    close: (cb) ->
-      tlsClient.close()
+    res =
+      emit: (e, cb) ->
+        data = JSON.stringify e
+        data += '\n'
+        tlsClient.write data, (err) ->
+          return if !cb?
+          cb err
+      copy: -> res
+      close: (cb) -> tcpClient.close()
+    res
 
   server: (config, cb) ->
+    kids = []
+
     certificates =
       key: getcert config.key
       cert: getcert config.cert
@@ -39,11 +48,19 @@ module.exports =
 
     tlsServer = tls.createServer certificates, (socket) ->
       socket.setEncoding 'utf8'
+      socket = socket.pipe ndjson.parse()
       socket.on 'error', (err) ->
         tlsServer.emit 'error', err
-      socket.on 'data', (data) ->
-        cb null, JSON.parse data
+      socket.on 'data', (e) ->
+        k.emit e for k in kids
 
-    tlsServer.on 'error', (err) -> cb err
+    if cb?
+      tlsServer.on 'error', (err) -> cb err
     tlsServer.listen port, address
-    close: (cb) -> tlsServer.close()
+
+    res = (k) ->
+      kids.push k
+      res
+    res.close = (cb) -> tlsServer.close cb
+    res.copy = -> res
+    res
