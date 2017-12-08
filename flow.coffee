@@ -64,7 +64,8 @@ reduce = (fn) -> unit emit: (events, next) ->
   current = null
   for item in events
     continue if !item?
-    current = extend {}, item if !current?
+    if !current?
+      current = extend {}, item, time: now()
     current = fn current, item
   next current if current?
 max = (selector) -> reduce (current, e) ->
@@ -81,6 +82,108 @@ count = reduce (current, e) ->
   e.metric ?= 0
   e.metric++
   e
+stats = (selector) -> unit emit: (events, next) ->
+  current = null
+  events = events.filter (e) -> e?
+  return if events.length is 0
+  value = selector events[0]
+  sum = 0
+  min = value
+  max = value
+  for e in events
+    value = selector e
+    sum += value
+    min = Math.min min, value
+    max = Math.max max, value
+  next extend {}, e,
+    time: now()
+    count: events.length
+    sum: sum
+    average: sum / events.length
+    min: min
+    max: max
+statstime = (ms, selector) ->
+  events = []
+  sum = 0
+  min = Number.MAX_VALUE
+  max = Number.MIN_VALUE
+  add = (e) ->
+    events.push e
+    value = selector e
+    sum += value
+    min = Math.min min, value
+    max = Math.max max, value
+  remove = (values) ->
+    recalcmin = no
+    recalcmax = no
+    for value in values
+      sum -= value
+      recalcmin = yes if value is min
+      recalcmax = yes if value is max
+    if recalcmin
+      min = Number.MAX_VALUE
+      min = Math.min min, selector e for e in events
+    if recalcmin
+      max = Number.MIN_VALUE
+      max = Math.max max, selector e for e in events
+  unit
+    emit: (e, next) ->
+      current = events.slice()
+      events = []
+      toremove = []
+      for item in current
+        if (e.time - item.time) > ms
+          toremove.push item
+        else
+          events.push item
+      remove toremove.map selector
+      add e
+      next extend {}, e,
+        time: now()
+        count: events.length
+        sum: sum
+        average: sum / events.length
+        min: min
+        max: max
+    copy: -> statstime ms, selector
+# emit events with up to count last events
+statscount = (count, selector) ->
+  events = []
+  sum = 0
+  min = Number.MAX_VALUE
+  max = Number.MIN_VALUE
+  add = (e) ->
+    events.push e
+    value = selector e
+    sum += value
+    min = Math.min min, value
+    max = Math.max max, value
+  remove = (values) ->
+    recalcmin = no
+    recalcmax = no
+    for value in values
+      sum -= value
+      recalcmin = yes if value is min
+      recalcmax = yes if value is max
+    if recalcmin
+      min = Number.MAX_VALUE
+      min = Math.min min, selector e for e in events
+    if recalcmin
+      max = Number.MIN_VALUE
+      max = Math.max max, selector e for e in events
+  unit
+    emit: (e, next) ->
+      toremove = events.splice(0, events.length - count)
+      remove toremove.map selector
+      add e
+      next extend {}, e,
+        time: now()
+        count: events.length
+        sum: sum
+        average: sum / events.length
+        min: min
+        max: max
+    copy: -> statstime ms, selector
 
 # emit events with events for last ms
 contexttime = (ms) ->
@@ -324,7 +427,30 @@ split = (selector) ->
     twin k.copy() for k in kids
     twin
   res
-# remember last event by selector, honor ttl, emit every ms
+compose = (sequence) ->
+  return stream if sequence.length is 0
+  res = sequence[sequence.length - 1]
+  res = sequence[i] res for i in [sequence.length - 2..0]
+  res
+pipe = (sequence) ->
+  return stream if sequence.length is 0
+  res = sequence[0]
+  res = sequence[i] res for i in [1...sequence.length]
+  res
+every = (kids) ->
+  kids = kids.slice()
+  res = (k) ->
+    kids.push k
+    res
+  res.emit = (e) ->
+    k.emit e for k in kids
+    null
+  res.copy = ->
+    twin = every []
+    twin k.copy() for k in kids
+    twin
+  res
+# remember last event by selector, honor ttl, emit every ms, ignore expired
 coalesce = (selector, ms) ->
   kids = []
   handle = null
@@ -348,9 +474,12 @@ coalesce = (selector, ms) ->
     kids.push k
     res
   res.emit = (e) ->
+    return if e?.state is 'expired'
     lake[selector e] = e
     handle = setTimeout drain, ms if !handle?
     null
+  res.get = (key) -> lake[key]
+  res.each = (fn) -> fn e for key, e of lake
   res.copy = ->
     twin = coalesce selector, ms
     twin k.copy() for k in kids
@@ -440,6 +569,11 @@ apdex = (issatisfied, istolerated, ms) ->
     twin k.copy() for k in kids
     twin
   res
+flatten = unit emit: (events, next) ->
+  if !Array.isArray events
+    next events
+    return
+  next e for e in events
 # emit first count events within ms, if more ignore all after ms since first event
 throttle = (count, ms) ->
   kids = []
@@ -469,15 +603,15 @@ throttle = (count, ms) ->
     twin
   res
 
-log =
-  emit: (e) -> console.log e
-  copy: -> log
+log = unit emit: (e, next) ->
+  console.log e
+  next e
 
-error =
-  emit: (e) -> console.error e
-  copy: -> error
+error = unit emit: (e, next) ->
+  console.error e
+  next e
 
-result = stream
+result = compose
 
 # util
 result.extend = extend
@@ -487,10 +621,11 @@ result.error = error
 
 # time
 result.now = now
-result.seconds = (n) -> n * 1000
-result.minutes = (n) -> n * 60000
-result.hours = (n) -> n * 360000
-result.days = (n) -> n * 8640000
+result.milliseconds = result.ms = (n) -> n
+result.seconds = result.s = (n) -> 1000 * result.ms n
+result.minutes = result.m = (n) -> 60 * result.m n
+result.hours = result.h = (n) -> 60 * result.m n
+result.days = result.d = (n) -> 24 * result.h n
 
 # item
 result.stream = stream
@@ -509,6 +644,9 @@ result.max = max
 result.min = min
 result.sum = sum
 result.count = count
+result.stats = stats
+result.statstime = statstime
+result.statscount = statscount
 
 # group
 result.contexttime = contexttime
@@ -520,6 +658,7 @@ result.coalesce = coalesce
 result.project = project
 result.rollup = rollup
 result.apdex = apdex
+result.flatten = flatten
 
 # flow
 result.sampletime = sampletime
@@ -535,6 +674,8 @@ result.throttle = throttle
 # control
 result.combine = combine
 result.split = split
-
+result.compose = compose
+result.pipe = pipe
+result.every = every
 
 module.exports = result

@@ -69,6 +69,15 @@ module.exports = {
       kids.push(k);
       return res;
     };
+    res.emit = function(e) {
+      var i, k, len, results;
+      results = [];
+      for (i = 0, len = kids.length; i < len; i++) {
+        k = kids[i];
+        results.push(k.emit(e));
+      }
+      return results;
+    };
     res.close = function(cb) {
       return udpServer.close(cb);
     };

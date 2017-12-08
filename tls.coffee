@@ -61,6 +61,7 @@ module.exports =
     res = (k) ->
       kids.push k
       res
+    res.emit = (e) -> k.emit e for k in kids
     res.close = (cb) -> tlsServer.close cb
     res.copy = -> res
     res
