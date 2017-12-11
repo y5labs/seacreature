@@ -1,5 +1,5 @@
 {
-  "name": "percieve",
+  "name": "seacreature",
   "version": "0.1.0",
   "description": "",
   "main": "index.js",
@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tcoats/percieve.git"
+    "url": "git+https://github.com/tcoats/seacreature.git"
   },
   "author": "Thomas Coats",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/tcoats/percieve/issues"
+    "url": "https://github.com/tcoats/seacreature/issues"
   },
-  "homepage": "https://github.com/tcoats/percieve#readme",
+  "homepage": "https://github.com/tcoats/seacreature#readme",
   "dependencies": {
     "extend": "3.0.1",
     "ndjson": "1.5.0"
