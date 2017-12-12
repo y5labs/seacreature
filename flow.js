@@ -1,8 +1,22 @@
 const extend = require('extend')
 
-const now = () => new Date().valueOf()
+const flow = (sequence) => {
+  if (sequence.length === 0) return stream
+  let res = sequence[sequence.length - 1]
+  for (let i = sequence.length - 2; i >= 0; i--) res = sequence[i](res)
+  return res
+}
 
-const unit = (params) => {
+flow.compose = flow
+
+flow.now = () => new Date().valueOf()
+flow.milliseconds = flow.ms = (n) => n
+flow.seconds = flow.s = (n) => 1000 * flow.ms(n)
+flow.minutes = flow.m = (n) => 60 * flow.m(n)
+flow.hours = flow.h = (n) => 60 * flow.m(n)
+flow.days = flow.d = (n) => 24 * flow.h(n)
+
+flow.unit = (params) => {
   let kids = []
   const res = (k) => {
     kids.push(k)
@@ -13,7 +27,7 @@ const unit = (params) => {
   })
   if (params.copy == null) {
     res.copy = () => {
-      let twin = unit(params)
+      let twin = flow.unit(params)
       for (let k of kids) twin(k.copy())
       return twin
     }
@@ -27,22 +41,22 @@ const unit = (params) => {
   return res
 }
 
-const stream = () => {
-  return unit({
+flow.stream = () => {
+  return flow.unit({
     emit: (e, next) => next(e)
   })
 }
 
-const filter = (test) => {
-  return unit({
+flow.filter = (test) => {
+  return flow.unit({
     emit: (e, next) => {
       if (test(e)) next(e)
     }
   })
 }
 
-const tagged = (tag) => {
-  return unit({
+flow.tagged = (tag) => {
+  return flow.unit({
     emit: (e, next) => {
       if (e.tags == null) return
       for (let t of e.tags) {
@@ -54,10 +68,10 @@ const tagged = (tag) => {
   })
 }
 
-const taggedany = (tags) => {
+flow.taggedany = (tags) => {
   const tagmap = {}
   for (let t of e.tags) tagmap[t] = true
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       if (e.tags == null) return
       for (let t of e.tags) {
@@ -69,10 +83,10 @@ const taggedany = (tags) => {
   })
 }
 
-const taggedall = (tags) => {
+flow.taggedall = (tags) => {
   const tagmap = {}
   for (let t of e.tags) tagmap[t] = true
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       if (e.tags == null) return
       count = 0
@@ -82,8 +96,8 @@ const taggedall = (tags) => {
   })
 }
 
-const each = (fn) => {
-  return unit({
+flow.each = (fn) => {
+  return flow.unit({
     emit: (e, next) => {
       fn(e)
       next(e)
@@ -91,36 +105,34 @@ const each = (fn) => {
   })
 }
 
-const copy = unit({
+flow.copy = flow.unit({
   emit: (e, next) => {
     next(extend(true, {}, e))
   }
 })
 
-const map = (fn) => {
-  return unit({
+flow.map = (fn) => {
+  return flow.unit({
     emit: (e, next) => next(fn(e))
   })
 }
 
-const run = (fn) => {
+flow.run = (fn) => {
   return {
     emit: (e) => {
       fn(e)
     },
-    copy: () => {
-      return run(fn)
-    }
+    copy: () => run(fn)
   }
 }
 
-const reduce = (fn) => {
-  return unit({
+flow.reduce = (fn) => {
+  return flow.unit({
     emit: (events, next) => {
       let current = null
       for (let item of events) {
         if (item == null) continue
-        if (current == null) current = extend({}, item, { time: now() })
+        if (current == null) current = extend({}, item, { time: flow.now() })
         current = fn(current, item)
       }
       if (current != null) next(current)
@@ -128,36 +140,36 @@ const reduce = (fn) => {
   })
 }
 
-const max = (selector) => {
-  return reduce((current, e) => {
+flow.max = (selector) => {
+  return flow.reduce((current, e) => {
     if (selector(e) > selector(current)) return e
     return current
   })
 }
 
-const min = (selector) => {
-  return reduce((current, e) => {
+flow.min = (selector) => {
+  return flow.reduce((current, e) => {
     if (selector(e) < selector(current)) return e
     return current
   })
 }
 
-const sum = (selector) => {
-  return reduce((current, e) => {
+flow.sum = (selector) => {
+  return flow.reduce((current, e) => {
     if (e.metric == null) e.metric = 0
     e.metric += selector(e)
     return e
   })
 }
 
-const count = reduce((current, e) => {
+flow.count = flow.reduce((current, e) => {
   if (e.metric == null) e.metric = 0
   e.metric++
   return e
 })
 
-const stats = (selector) => {
-  return unit({
+flow.stats = (selector) => {
+  return flow.unit({
     emit: (events, next) => {
       events = events.filter((e) => e != null)
       if (events.length === 0) return
@@ -172,7 +184,7 @@ const stats = (selector) => {
         max = Math.max(max, value)
       }
       next(extend({}, e, {
-        time: now(),
+        time: flow.now(),
         count: events.length,
         sum: sum,
         average: sum / events.length,
@@ -183,7 +195,7 @@ const stats = (selector) => {
   })
 }
 
-const statstime = (ms, selector) => {
+flow.statstime = (ms, selector) => {
   let events = []
   let sum = 0
   let min = Number.MAX_VALUE
@@ -212,7 +224,7 @@ const statstime = (ms, selector) => {
       for (let e of events) max = Math.max(max, selector(e))
     }
   }
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       const current = events.slice()
       events = []
@@ -227,7 +239,7 @@ const statstime = (ms, selector) => {
       remove(toremove.map(selector))
       add(e)
       next(extend({}, e, {
-        time: now(),
+        time: flow.now(),
         count: events.length,
         sum: sum,
         average: sum / events.length,
@@ -235,11 +247,11 @@ const statstime = (ms, selector) => {
         max: max
       }))
     },
-    copy: () => statstime(ms, selector)
+    copy: () => flow.statstime(ms, selector)
   })
 }
 
-const statscount = (count, selector) => {
+flow.statscount = (count, selector) => {
   let events = []
   let sum = 0
   let min = Number.MAX_VALUE
@@ -268,13 +280,13 @@ const statscount = (count, selector) => {
       for (let e of events) max = Math.max(max, selector(e))
     }
   }
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       const toremove = events.splice(0, events.length - count)
       remove(toremove.map(selector))
       add(e)
       next(extend({}, e, {
-        time: now(),
+        time: flow.now(),
         count: events.length,
         sum: sum,
         average: sum / events.length,
@@ -282,13 +294,13 @@ const statscount = (count, selector) => {
         max: max
       }))
     },
-    copy: () => statstime(ms, selector)
+    copy: () => flow.statstime(ms, selector)
   })
 }
 
-const contexttime = (ms) => {
+flow.contexttime = (ms) => {
   let context = []
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       const events = []
       context = context.filter((item) => {
@@ -299,23 +311,23 @@ const contexttime = (ms) => {
       context.push(e)
       next(events)
     },
-    copy: () => contexttime(ms)
+    copy: () => flow.contexttime(ms)
   })
 }
 
-const contextcount = (count) => {
+flow.contextcount = (count) => {
   const events = []
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       events.push(e)
       next(events)
       if (events.length > count) events.shift()
     },
-    copy: () => contextcount(count)
+    copy: () => flow.contextcount(count)
   })
 }
 
-const grouptime = (ms) => {
+flow.grouptime = (ms) => {
   const kids = []
   let handle = null
   let events = []
@@ -341,16 +353,16 @@ const grouptime = (ms) => {
     }
   }
   res.copy = () => {
-    const twin = grouptime(ms)
+    const twin = flow.grouptime(ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const groupcount = (count) => {
+flow.groupcount = (count) => {
   let events = []
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       events.push(e)
       if (events.length === count) {
@@ -358,11 +370,11 @@ const groupcount = (count) => {
         events = []
       }
     },
-    copy: () => groupcount(count)
+    copy: () => flow.groupcount(count)
   })
 }
 
-const batch = (count, ms) => {
+flow.batch = (count, ms) => {
   const kids = []
   let handle = null
   let events = []
@@ -390,16 +402,16 @@ const batch = (count, ms) => {
     if (events.length === count) drain()
   }
   res.copy = () => {
-    twin = batch(count, ms)
+    twin = flow.batch(count, ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const sampletime = (ms) => {
+flow.sampletime = (ms) => {
   let last = null
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       if (last == null) {
         last = e.time
@@ -410,13 +422,13 @@ const sampletime = (ms) => {
         last = e.time
       }
     },
-    copy: () => sampletime(ms)
+    copy: () => flow.sampletime(ms)
   })
 }
 
-const samplecount = (count) => {
+flow.samplecount = (count) => {
   let index = 0
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       index++
       if (index === count) {
@@ -424,23 +436,23 @@ const samplecount = (count) => {
         index = 0
       }
     },
-    copy: () => samplecount(count)
+    copy: () => flow.samplecount(count)
   })
 }
 
-const changed = (selector, initial) => {
+flow.changed = (selector, initial) => {
   let previous = initial
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       const current = selector(e)
       if (previous !== current) next(e)
       previous = current
     },
-    copy: () => changed(selector, initial)
+    copy: () => flow.changed(selector, initial)
   })
 }
 
-const settle = (ms) => {
+flow.settle = (ms) => {
   const kids = []
   let handle = null
   let event = null
@@ -459,14 +471,14 @@ const settle = (ms) => {
     handle = setTimeout(drain, ms)
   }
   res.copy = () => {
-    const twin = settle(ms)
+    const twin = flow.settle(ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const stable = (ms, selector, initial) => {
+flow.stable = (ms, selector, initial) => {
   let previous = initial
   const kids = []
   let event = null
@@ -489,7 +501,7 @@ const stable = (ms, selector, initial) => {
     event = e
   }
   res.copy = () => {
-    const twin = stable(ms, selector)
+    const twin = flow.stable(ms, selector)
     for (let k of kids) twin(k.copy())
     return twin
   }
@@ -497,9 +509,9 @@ const stable = (ms, selector, initial) => {
 }
 
 // TODO: timeout?
-const debounce = (ms) => {
+flow.debounce = (ms) => {
   let last = null
-  return unit({
+  return flow.unit({
     emit: (e, next) => {
       if (last == null) {
         last = e.time
@@ -509,11 +521,11 @@ const debounce = (ms) => {
         next(e)
       }
     },
-    copy: () => debounce(ms)
+    copy: () => flow.debounce(ms)
   })
 }
 
-const combine = (streams) => {
+flow.combine = (streams) => {
   const kids = []
   for (let s of streams) s({ emit: (e) => res.emit(e) })
   const res = (k) => {
@@ -524,14 +536,14 @@ const combine = (streams) => {
     for (let k of kids) k.emit(e)
   }
   res.copy = () => {
-    const twin = combine(streams)
+    const twin = flow.combine(streams)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const split = (selector) => {
+flow.split = (selector) => {
   const kids = []
   const streams = {}
   const res = (k) => {
@@ -546,23 +558,14 @@ const split = (selector) => {
     for (let k of streams[value]) k.emit(e)
   }
   res.copy = () => {
-    const twin = split(selector)
+    const twin = flow.split(selector)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const compose = (sequence) => {
-  if (sequence.length === 0) {
-    return stream
-  }
-  let res = sequence[sequence.length - 1]
-  for (let i = sequence.length - 2; i >= 0; i--) res = sequence[i](res)
-  return res
-}
-
-const pipe = (sequence) => {
+flow.pipe = (sequence) => {
   if (sequence.length === 0) {
     return stream
   }
@@ -571,7 +574,7 @@ const pipe = (sequence) => {
   return res
 }
 
-const every = (kids) => {
+flow.every = (kids) => {
   kids = kids.slice()
   const res = (k) => {
     kids.push(k)
@@ -581,19 +584,19 @@ const every = (kids) => {
     for (let k of kids) k.emit(e)
   }
   res.copy = () => {
-    const twin = every([])
+    const twin = flow.every([])
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const coalesce = (selector, ms) => {
+flow.coalesce = (selector, ms) => {
   const kids = []
   let handle = null
   const lake = {}
   const drain = () => {
-    const current = now()
+    const current = flow.now()
     const events = []
     for (key in lake) {
       e = lake[key]
@@ -630,14 +633,14 @@ const coalesce = (selector, ms) => {
     return results
   }
   res.copy = () => {
-    const twin = coalesce(selector, ms)
+    const twin = flow.coalesce(selector, ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const project = (predicates) => {
+flow.project = (predicates) => {
   const kids = []
   let events = predicates.map((predicate) => null)
   const res = (k) => {
@@ -656,14 +659,14 @@ const project = (predicates) => {
     })
   }
   res.copy = () => {
-    const twin = project(predicates)
+    const twin = flow.project(predicates)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const rollup = (count, ms) => {
+flow.rollup = (count, ms) => {
   const kids = []
   let handle = null
   let events = []
@@ -690,14 +693,14 @@ const rollup = (count, ms) => {
     handle = setTimeout(drain, ms + events[0].time - e.time)
   }
   res.copy = () => {
-    const twin = rollup(count, ms)
+    const twin = flow.rollup(count, ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const apdex = (issatisfied, istolerated, ms) => {
+flow.apdex = (issatisfied, istolerated, ms) => {
   const kids = []
   let handle = null
   let events = []
@@ -707,7 +710,7 @@ const apdex = (issatisfied, istolerated, ms) => {
       return
     }
     const e = extend({}, events[events.length - 1])
-    e.time = now()
+    e.time = flow.now()
     e.satisfied = 0
     e.tolerated = 0
     for (let item of events) {
@@ -731,14 +734,14 @@ const apdex = (issatisfied, istolerated, ms) => {
     if (handle == null) handle = setTimeout(drain, ms)
   }
   res.copy = () => {
-    const twin = apdex(count, ms)
+    const twin = flow.apdex(count, ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const flatten = unit({
+flow.flatten = flow.unit({
   emit: (events, next) => {
     if (!Array.isArray(events)) {
       next(events)
@@ -748,7 +751,7 @@ const flatten = unit({
   }
 })
 
-const throttle = (count, ms) => {
+flow.throttle = (count, ms) => {
   const kids = []
   let handle = null
   let events = []
@@ -774,76 +777,25 @@ const throttle = (count, ms) => {
     handle = setTimeout(drain, ms + events[0].time - e.time)
   }
   res.copy = () => {
-    const twin = throttle(count, ms)
+    const twin = flow.throttle(count, ms)
     for (let k of kids) twin(k.copy())
     return twin
   }
   return res
 }
 
-const log = unit({
+flow.log = flow.unit({
   emit: (e, next) => {
     console.log(e)
     next(e)
   }
 })
 
-const error = unit({
+flow.error = flow.unit({
   emit: (e, next) => {
     console.error(e)
     next(e)
   }
 })
 
-result = compose
-result.extend = extend
-result.unit = unit
-result.log = log
-result.error = error
-result.now = now
-result.milliseconds = result.ms = (n) => n
-result.seconds = result.s = (n) => 1000 * result.ms(n)
-result.minutes = result.m = (n) => 60 * result.m(n)
-result.hours = result.h = (n) => 60 * result.m(n)
-result.days = result.d = (n) => 24 * result.h(n)
-result.stream = stream
-result.filter = filter
-result.tagged = tagged
-result.taggedany = taggedany
-result.taggedall = taggedall
-result.each = each
-result.copy = copy
-result.map = map
-result.run = run
-result.reduce = reduce
-result.max = max
-result.min = min
-result.sum = sum
-result.count = count
-result.stats = stats
-result.statstime = statstime
-result.statscount = statscount
-result.contexttime = contexttime
-result.contextcount = contextcount
-result.grouptime = grouptime
-result.groupcount = groupcount
-result.batch = batch
-result.coalesce = coalesce
-result.project = project
-result.rollup = rollup
-result.apdex = apdex
-result.flatten = flatten
-result.sampletime = sampletime
-result.samplecount = samplecount
-result.changed = changed
-result.settle = settle
-result.stable = stable
-result.debounce = debounce
-result.throttle = throttle
-result.combine = combine
-result.split = split
-result.compose = compose
-result.pipe = pipe
-result.every = every
-
-module.exports = result
+module.exports = flow
