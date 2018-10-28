@@ -1,5 +1,19 @@
-const extend = require('extend')
+// Flow aims to provide a comprehensive set of widely applicable,
+// combinable tools for building complex streams.
+// Streams are functions which accept events or in some cases, lists of events.
+// Streams typically do one or more of the following.
+// - Filter events.
+// - Transform events.
+// - Combine events over time.
+// - Apply events to other streams.
+// - Forward events to other services.
 
+// Each stream function generally returns a function that can be called
+// to register a child stream. Two methods are available:
+// - emit(event or events)
+// - copy() used to duplicate stream trees
+
+// apply a sequence of functions
 const flow = (...args) => {
   if (args.length === 0) return stream()
   if (args.length === 1 && Array.isArray(args[0])) args = args[0]
@@ -54,8 +68,7 @@ flow.tagged = (tag) => flow.unit({ emit: (e, next) => {
   if (e.tags == null) return
   for (let t of e.tags) {
     if (t !== tag) continue
-    next(e)
-    return
+    return next(e)
   }
 }})
 
@@ -68,8 +81,7 @@ flow.taggedany = (tags) => {
       if (e.tags == null) return
       for (let t of e.tags) {
         if (!tagmap[t]) continue
-        next(e)
-        return
+        return next(e)
       }
     }
   })
@@ -96,23 +108,17 @@ flow.each = (fn) => flow.unit({ emit: (e, next) => {
 }})
 
 // make a copy of each passed event
-flow.copy = flow.unit({ emit: (e, next) => next(extend(true, {}, e))})
+flow.copy = flow.unit({ emit: (e, next) => next(Object.assign({}, e))})
 
 // run a function to change each passed event
 flow.map = (fn) => flow.unit({ emit: (e, next) => next(fn(e)) })
-
-//
-flow.run = (fn) => { return {
-  emit: (e) => fn(e),
-  copy: () => run(fn)
-}}
 
 // run a function on a set of events reducing to a single event
 flow.reduce = (fn) => flow.unit({ emit: (events, next) => {
   let current = null
   for (let item of events) {
     if (item == null) continue
-    if (current == null) current = extend({}, item, { time: flow.now() })
+    if (current == null) current = Object.assign({}, item)
     current = fn(current, item)
   }
   if (current != null) next(current)
@@ -154,7 +160,7 @@ flow.stats = (selector) => flow.unit({ emit: (events, next) => {
     min = Math.min(min, value)
     max = Math.max(max, value)
   }
-  next(extend({}, {
+  next(Object.assign({}, events[events.length - 1], {
     time: flow.now(),
     count: events.length,
     sum: sum,
@@ -218,9 +224,7 @@ flow.grouptime = (ms) => {
     if (handle == null) {
       events = [e]
       handle = setTimeout(drain, ms)
-    } else {
-      events.push(e)
-    }
+    } else events.push(e)
   }
   res.copy = () => {
     const twin = flow.grouptime(ms)
@@ -245,6 +249,7 @@ flow.groupcount = (count) => {
   })
 }
 
+// group by count or time, whichever is smallest
 flow.batch = (count, ms) => {
   const kids = []
   let handle = null
@@ -255,8 +260,7 @@ flow.batch = (count, ms) => {
       for (let k of kids) k.emit(events)
       events = []
       handle = setTimeout(drain, ms)
-    } else
-      handle = null
+    } else handle = null
   }
   const res = (k) => {
     kids.push(k)
@@ -266,8 +270,7 @@ flow.batch = (count, ms) => {
     if (handle == null) {
       events = [e]
       handle = setTimeout(drain, ms)
-    } else
-      events.push(e)
+    } else events.push(e)
     if (events.length === count) drain()
   }
   res.copy = () => {
@@ -284,10 +287,7 @@ flow.sampletime = (ms) => {
   return flow.unit({
     emit: (e, next) => {
       if (!e.time) e.time = flow.now()
-      if (last == null) {
-        last = e.time
-        return
-      }
+      if (last == null) return last = e.time
       if (e.time - last > ms) {
         next(e)
         last = e.time
@@ -425,9 +425,7 @@ flow.combine = (streams) => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
-    for (let k of kids) k.emit(e)
-  }
+  res.emit = (e) => { for (let k of kids) k.emit(e) }
   res.copy = () => {
     const twin = flow.combine(streams)
     for (let k of kids) twin(k.copy())
@@ -495,7 +493,7 @@ flow.coalesce = (selector, ms) => {
     for (key in lake) {
       e = lake[key]
       if (e.time + e.ttl < current) {
-        events.push(extend({}, e, { state: 'expired' }))
+        events.push(Object.assign({}, e, { state: 'expired' }))
         delete lake[key]
         continue
       }
@@ -513,7 +511,6 @@ flow.coalesce = (selector, ms) => {
     return res
   }
   res.emit = (e) => {
-    if (!e.time) e.time = flow.now()
     if (e != null && e.state != null && e.state === 'expired') return
     if (!e.time) e.time = flow.now()
     if (!e.ttl) e.ttl = flow.minutes(1)
@@ -539,9 +536,7 @@ flow.project = (predicates) => {
   }
   res.emit = (e) => {
     if (!e.time) e.time = flow.now()
-    for (let predicate of predicates) {
-      if (predicate(e)) events[index] = e
-    }
+    for (let predicate of predicates) if (predicate(e)) events[index] = e
     for (let k of kids) k.emit(events)
     events = events.map((item) => {
       if (item == null || item.ttl == null) return null
@@ -573,10 +568,7 @@ flow.rollup = (count, ms) => {
   }
   res.emit = (e) => {
     if (!e.time) e.time = flow.now()
-    if (handle != null) {
-      events.push(e)
-      return
-    }
+    if (handle != null) returnevents.push(e)
     events.push(e)
     events = events.filter((i) => (e.time - i.time) < ms)
     if (events.length <= count) {
@@ -599,10 +591,7 @@ flow.apdex = (issatisfied, istolerated, ms) => {
   let handle = null
   let events = []
   const drain = () => {
-    if (events.length === 0) {
-      handle = null
-      return
-    }
+    if (events.length === 0) return handle = null
     const e = {}
     e.time = flow.now()
     e.satisfied = 0
@@ -636,10 +625,7 @@ flow.apdex = (issatisfied, istolerated, ms) => {
 // turn a set of events into individual events
 flow.flatten = flow.unit({
   emit: (events, next) => {
-    if (!Array.isArray(events)) {
-      next(events)
-      return
-    }
+    if (!Array.isArray(events)) return next(events)
     for (let e of events) next(e)
   }
 })
@@ -659,10 +645,7 @@ flow.throttle = (count, ms) => {
   }
   res.emit = (e) => {
     if (!e.time) e.time = flow.now()
-    if (handle != null) {
-      events.push(e)
-      return
-    }
+    if (handle != null) return events.push(e)
     events.push(e)
     events = events.filter((item) => (e.time - item.time) < ms)
     if (events.length <= count) {
@@ -673,6 +656,140 @@ flow.throttle = (count, ms) => {
   }
   res.copy = () => {
     const twin = flow.throttle(count, ms)
+    for (let k of kids) twin(k.copy())
+    return twin
+  }
+  return res
+}
+
+// calculate the change in a selector over time, saved as metric
+flow.ddt = (selector) => {
+  let last = null
+  return flow.unit({
+    emit: (e, next) => {
+      if (!e.time) e.time = flow.now()
+      if (!last) last = e
+      const valuediff = selector(e) - selector(last)
+      const timediff = e.time - last.time
+      next(Object.assign({}, e, { metric: valuediff != 0 && timediff != 0
+        ? valuediff / timediff : 0}))
+      last = e
+    },
+    copy: () => flow.ddt(selector)
+  })
+}
+
+// calculate exponential weighted moving average, saved as metric
+// does not take into account the time between events
+// r is the ratio of current event value to average of previous events
+// 1 = only use the latest value, 1/2 = 1/2n + 1/4(n - 1), 1/8(n - 2) ...
+flow.ewmatimeless = (selector, r) => {
+  let current = null
+  return flow.unit({
+    emit: (e, next) => {
+      const value = selector(e)
+      if (!current) current = value
+      current = value * r + current * (1 - r)
+      next(Object.assign({}, e, { metric: current }))
+    },
+    copy: () => flow.ewmatimeless(selector, r)
+  })
+}
+
+// calculate exponential weighted moving average, saved as metric
+// takes into account the time between events
+// h is half-life (in ms)
+// 1 = only use the latest value, 1/2 = 1/2n + 1/4(n - 1), 1/8(n - 2) ...
+flow.ewma = (selector, h) => {
+  let current = null
+  let lasttime = null
+  return flow.unit({
+    emit: (e, next) => {
+      if (!e.time) e.time = flow.now()
+      const value = selector(e)
+      if (!lasttime) {
+        current = value
+        lasttime = e.time
+      }
+      const timediff = e.time - lasttime
+      const r = Math.exp(-1.0 * (timediff / h))
+      current = (1.0 - r) * value + r * current
+      lasttime = e.time
+      next(Object.assign({}, e, { metric: current }))
+    },
+    copy: () => flow.ewma(selector, h)
+  })
+}
+
+// calculate the per ms value of a selector over time, saved as metric
+// executes on a set of events over ms timeframe
+flow.rate = (selector, ms) => flow.unit({
+  emit: (events, next) => {
+    if (events.length == 0) return
+    const metric = events.reduce((sum, e) => sum + selector(e))
+    const e = events[events.length - 1]
+    next(Object.assign({}, e, { metric: current / ms }))
+  },
+  copy: () => flow.rate(selector, ms)
+})
+
+// given a set of points, output selected events that match for each
+// e.g. 1 = top, 0 = bottom, 0.5 = median...
+// executes on a set of events, outputs a set of events
+// appends the points to the name of each event
+flow.percentiles = (selector, points) => flow.unit({
+  emit: (events, next) => {
+    if (events.length == 0) return
+    const values = events.map((e) => { return {
+      value: selector(e),
+      event: e
+    }})
+    values.sort((a, b) => a.value - b.value)
+    next(points.map((p) => {
+      let index = Math.round(p * value.length - 0.5)
+      index = Math.min(Math.max(index, 0), value.length - 1)
+      let e = values[index]
+      if (e.name) e = Object.assign({}, e, { name: `${e.name} ${p}` })
+      return e
+    }))
+  },
+  copy: () => flow.percentiles(selector, points)
+})
+
+// repeat last event every ms if no events are coming through
+// continue until ttl on the last event expires
+// use the generate function if supplied or duplicate the event and update time
+flow.fillin = (ms, generate) => {
+  const kids = []
+  let handle = null
+  let last = null
+  const drain = () => {
+    handle = null
+    const now = flow.now()
+    if (last.time + last.ttl < now) return last = null
+    const e = generate
+      ? generate(last)
+      : Object.assign({}, last, { time: now })
+    for (let k of kids) k.emit(e)
+    handle = setTimeout(drain, ms)
+  }
+  const res = (k) => {
+    kids.push(k)
+    return res
+  }
+  res.emit = (e) => {
+    if (!e.time) e.time = flow.now()
+    if (!e.ttl) e.ttl = flow.minutes(1)
+    if (handle != null) {
+      clearTimeout(handle)
+      handle = null
+    }
+    last = e
+    for (let k of kids) k.emit(e)
+    handle = setTimeout(drain, ms)
+  }
+  res.copy = () => {
+    const twin = flow.fillin(ms, generate)
     for (let k of kids) twin(k.copy())
     return twin
   }

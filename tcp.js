@@ -21,9 +21,7 @@ module.exports = {
         })
       },
       copy: () => res,
-      close: (cb) => {
-        tcpClient.close()
-      }
+      close: (cb) => tcpClient.close()
     }
     return res
   },
@@ -38,29 +36,17 @@ module.exports = {
     const tcpServer = net.createServer((socket) => {
       socket.setEncoding('utf8')
       socket = socket.pipe(ndjson.parse())
-      socket.on('error', (err) => {
-        tcpServer.emit('error', err)
-      })
-      socket.on('data', (e) => {
-        for (let k of kids) k.emit(e)
-      })
+      socket.on('error', (err) => tcpServer.emit('error', err))
+      socket.on('data', (e) => { for (let k of kids) k.emit(e) })
     })
-    if (cb != null) {
-      tcpServer.on('error', (err) => {
-        cb(err)
-      })
-    }
+    if (cb != null) tcpServer.on('error', cb)
     tcpServer.listen(port, address)
     res = (k) => {
       kids.push(k)
       return res
     }
-    res.emit = (e) => {
-      for (let k of kids) k.emit(e)
-    }
-    res.close = (cb) => {
-      tcpServer.close(cb)
-    }
+    res.emit = (e) => { for (let k of kids) k.emit(e) }
+    res.close = (cb) => tcpServer.close(cb)
     res.copy = () => res
     return res
   }

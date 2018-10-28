@@ -2,26 +2,25 @@
 
 Node.js transient event processing inspired by [Riemann](http://riemann.io).
 
-# API
-
-## flow.compose([source, modifier1, ...])
-
-
-# TODO:
-# Destinations: email, txt, alert, pagerduty, storage
-# Dashboard
-
-# http://riemann.io/api/riemann.streams.html
-
-# ddt
-# ddttime
-# fillin
-# ewma
-# ewmatimeless
-# percentiles
-# stats
+The API is similar to the [Riemann streams API](http://riemann.io/api/riemann.streams.html) and [Riemann streams source](https://github.com/riemann/riemann/blob/master/src/riemann/streams.clj).
 
 ```javascript
+// Flow aims to provide a comprehensive set of widely applicable,
+// combinable tools for building complex streams.
+// Streams are functions which accept events or in some cases, lists of events.
+// Streams typically do one or more of the following.
+// - Filter events.
+// - Transform events.
+// - Combine events over time.
+// - Apply events to other streams.
+// - Forward events to other services.
+
+// Each stream function generally returns a function that can be called
+// to register a child stream. Two methods are available:
+// - emit(event or events)
+// - copy() used to duplicate stream trees
+const flow = require('seacreature/flow')
+
 // apply a sequence of functions
 flow(args)
 flow.compose(args)
@@ -68,9 +67,6 @@ flow.copy()
 // run a function to change each passed event
 flow.map(fn)
 
-// 
-flow.run(fn)
-
 // run a function on a set of events reducing to a single event
 flow.reduce(fn)
 
@@ -101,6 +97,7 @@ flow.grouptime(ms)
 // group events by count
 flow.groupcount(count)
 
+// group by count or time, whichever is smallest
 flow.batch(count, ms)
 
 // sample at most one event over a time period
@@ -152,6 +149,36 @@ flow.flatten()
 
 // pass on at most n events every ms
 flow.throttle(count, ms)
+
+// calculate the change in a selector over time, saved as metric
+flow.ddt(selector)
+
+// calculate exponential weighted moving average, saved as metric
+// does not take into account the time between events
+// r is the ratio of current event value to average of previous events
+// 1 = only use the latest value, 1/2 = 1/2n + 1/4(n - 1), 1/8(n - 2) ...
+flow.ewmatimeless(selector, r)
+
+// calculate exponential weighted moving average, saved as metric
+// takes into account the time between events
+// h is half-life (in ms)
+// 1 = only use the latest value, 1/2 = 1/2n + 1/4(n - 1), 1/8(n - 2) ...
+flow.ewma(selector, h)
+
+// calculate the per ms value of a selector over time, saved as metric
+// executes on a set of events over ms timeframe
+flow.rate(selector, ms)
+
+// given a set of points, output selected events that match for each
+// e.g. 1 = top, 0 = bottom, 0.5 = median...
+// executes on a set of events, outputs a set of events
+// appends the points to the name of each event
+flow.percentiles(selector, points)
+
+// repeat last event every ms if no events are coming through
+// continue until ttl on the last event expires
+// use the generate function if supplied or duplicate the event and update time
+flow.fillin(ms, generate)
 
 // log events as they pass through
 flow.log()
