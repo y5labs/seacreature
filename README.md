@@ -4,6 +4,8 @@ Node.js transient event processing inspired by [Riemann](http://riemann.io).
 
 The API is similar to the [Riemann streams API](http://riemann.io/api/riemann.streams.html) and [Riemann streams source](https://github.com/riemann/riemann/blob/master/src/riemann/streams.clj).
 
+Link to WAMP?
+
 ```javascript
 // Flow aims to provide a comprehensive set of widely applicable,
 // combinable tools for building complex streams.
