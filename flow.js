@@ -18,7 +18,8 @@ const flow = (...args) => {
   if (args.length === 0) return stream()
   if (args.length === 1 && Array.isArray(args[0])) args = args[0]
   let res = args[args.length - 1]
-  for (let i = args.length - 2; i >= 0; i--) res = args[i](res)
+  let iterate = args[args.length - 1]
+  for (let i = args.length - 2; i >= 0; i--) iterate = args[i](iterate)
   return res
 }
 flow.compose = flow
@@ -623,7 +624,7 @@ flow.apdex = (issatisfied, istolerated, ms) => {
 }
 
 // turn a set of events into individual events
-flow.flatten = flow.unit({
+flow.flatten = () => flow.unit({
   emit: (events, next) => {
     if (!Array.isArray(events)) return next(events)
     for (let e of events) next(e)
