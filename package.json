@@ -17,6 +17,5 @@
   },
   "homepage": "https://github.com/tcoats/seacreature#readme",
   "dependencies": {
-    "ndjson": "1.5.0"
   }
 }

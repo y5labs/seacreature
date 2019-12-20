@@ -1,5 +1,5 @@
 const net = require('net')
-const ndjson = require('ndjson')
+const ndjson = require('../lib/ndjson')
 
 module.exports = {
   client: (config) => {
@@ -35,7 +35,7 @@ module.exports = {
     }
     const tcpServer = net.createServer((socket) => {
       socket.setEncoding('utf8')
-      socket = socket.pipe(ndjson.parse())
+      socket = ndjson(socket)
       socket.on('error', (err) => tcpServer.emit('error', err))
       socket.on('data', (e) => { for (let k of kids) k.emit(e) })
     })

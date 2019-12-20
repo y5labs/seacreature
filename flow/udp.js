@@ -1,5 +1,5 @@
 const dgram = require('dgram')
-const ndjson = require('ndjson')
+const ndjson = require('../lib/ndjson')
 const stream = require('stream')
 
 module.exports = {
@@ -44,13 +44,9 @@ module.exports = {
     udpServer.on('message', (data, info) => {
       socket.write(data.toString('utf-8'))
     })
-    socket = socket.pipe(ndjson.parse())
-    socket.on('error', (err) => {
-      tcpServer.emit('error', err)
-    })
-    socket.on('data', (e) => {
-      for (let k of kids) k.emit(e)
-    })
+    socket = ndjson(socket)
+    socket.on('error', (err) => { tcpServer.emit('error', err) })
+    socket.on('data', (e) => { for (let k of kids) k.emit(e) })
     if (cb != null) {
       udpServer.on('error', (err) => {
         cb(err)

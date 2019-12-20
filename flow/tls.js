@@ -1,7 +1,7 @@
 const fs = require('fs')
 const net = require('net')
 const tls = require('tls')
-const ndjson = require('ndjson')
+const ndjson = require('../lib/ndjson')
 
 getcert = (pathname) => {
   if (pathname instanceof Array)
@@ -56,13 +56,9 @@ module.exports = {
     }
     const tlsServer = tls.createServer(certificates, (socket) => {
       socket.setEncoding('utf8')
-      socket = socket.pipe(ndjson.parse())
-      socket.on('error', (err) => {
-        tlsServer.emit('error', err)
-      })
-      socket.on('data', (e) => {
-        for (let k of kids) k.emit(e)
-      })
+      socket = ndjson(socket)
+      socket.on('error', (err) => { tlsServer.emit('error', err) })
+      socket.on('data', (e) => { for (let k of kids) k.emit(e) })
     })
     if (cb != null) {
       tlsServer.on('error', (err) => {
