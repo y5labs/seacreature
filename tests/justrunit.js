@@ -10,12 +10,16 @@ const intoobject = (result, item) => {
 const cube = Cube(d => d.id)
 cube.on('selection changed', p => console.log({
   ...p,
-  put: p.put.map(cube.identity).reduce(intoobject, {}),
-  del: p.del.map(cube.identity).reduce(intoobject, {})
+  put: p.put.map(cube.identity),
+  del: p.del.map(cube.identity)
 }))
-const name = cube.range_single(d => d.name)
-const indicies = await cube.batch({ put: data1 })
-await cube.batch_calculate_selection_change(indicies)
-await name('Michael Smith')
+const children = cube.range_multiple(d => d.children
+  .filter(id => cube.id2d(id))
+  .map(id => cube.id2d(id).name))
+const indicies1 = await cube.batch({ put: data1 })
+await cube.batch_calculate_selection_change(indicies1)
+const indicies2 = await cube.batch({ put: data2, del: data1 })
+await cube.batch_calculate_selection_change(indicies2)
+console.log(Array.from(children.filtered(Infinity), d => d[0]))
 
 })()

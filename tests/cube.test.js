@@ -33,15 +33,11 @@ const intoobject = (result, item) => {
 test('cube batch', async () => {
   const cube = Cube(d => d.id)
   const diff = jest.fn()
-  cube.on('selection changed', p => {
-    const payload = {
-      ...p,
-      put: p.put.map(cube.identity).reduce(intoobject, {}),
-      del: p.del.map(cube.identity).reduce(intoobject, {})
-    }
-    console.log(payload)
-    return diff(payload)
-  })
+  cube.on('selection changed', p => diff({
+    ...p,
+    put: p.put.map(cube.identity).reduce(intoobject, {}),
+    del: p.del.map(cube.identity).reduce(intoobject, {})
+  }))
   const name = cube.range_single(d => d.name)
   const indicies = await cube.batch({ put: data1 })
   await cube.batch_calculate_selection_change(indicies)

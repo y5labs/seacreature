@@ -218,10 +218,10 @@ module.exports = (cube, map) => {
       filter[0], filter[1])
     indicies[0] = update[0]
     indicies[1] = update[1]
-    for (const i of diff.put)
-      cube.filterbits[bitindex.offset][i] &= ~bitindex.one
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one
+    for (const i of diff.put)
+      cube.filterbits[bitindex.offset][i] &= ~bitindex.one
     hub.emit('batch', { put, del, diff })
     return diff
   }

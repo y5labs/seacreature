@@ -238,7 +238,7 @@ module.exports = (identity) => {
       const indicies = index.batch({ put: put_ids, del: del_ids })
       const result = {
         put: indicies.put.map(i => [i, i2d(i)]),
-        del: indicies.del.map(i => [i, i2d(i)])
+        del: indicies.del.map((i, index) => [i, del[index]])
       }
       filterbits.lengthen(index.length())
       for (const i of indicies.put) filterbits.clear(i)
