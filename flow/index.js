@@ -813,4 +813,12 @@ flow.error = flow.unit({
   }
 })
 
+// trace events as they pass through
+flow.trace = flow.unit({
+  emit: (e, next) => {
+    console.trace(e)
+    next(e)
+  }
+})
+
 module.exports = flow
