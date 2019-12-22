@@ -53,7 +53,7 @@ test('bisect_right 2', async () => {
 test('bisect_right 3', async () => {
   expect(RangeIndex.bisect_right(
     test_range, -2, 0, 6
-  )).toBe(0)
+  )).toBe(-1)
 })
 
 test('bisect_left 1', async () => {
@@ -68,8 +68,8 @@ test('bisect_left 2', async () => {
   )).toBe(6)
 })
 
-test('bisect_left 2', async () => {
+test('bisect_left 3', async () => {
   expect(RangeIndex.bisect_left(
     test_range, 14, 0, 6
-  )).toBe(6)
+  )).toBe(7)
 })

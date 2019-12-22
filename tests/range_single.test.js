@@ -9,14 +9,6 @@ test('before batch', async () => {
     .toEqual([100, 200, 800, 800])
 })
 
-test('after batch', async () => {
-  const cube = Cube(d => d.id)
-  await cube.batch({ put: data1 })
-  const ts = cube.range_single(d => d.ts)
-  expect(Array.from(ts.filtered(Infinity), d => d[0]))
-    .toEqual([100, 200, 800, 800])
-})
-
 test('changes', async () => {
   const cube = Cube(d => d.id)
   const ts = cube.range_single(d => d.ts)

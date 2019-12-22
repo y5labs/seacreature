@@ -9,14 +9,6 @@ test('before batch', async () => {
     .toEqual(['Derrick Smith', 'Mandy Smith', null, null, null])
 })
 
-test('after batch', async () => {
-  const cube = Cube(d => d.id)
-  await cube.batch({ put: data1 })
-  const children = cube.range_multiple(d => d.children.map(id => cube.id2d(id).name))
-  expect(Array.from(children.filtered(Infinity), d => d[0]))
-    .toEqual(['Derrick Smith', 'Mandy Smith', null, null, null])
-})
-
 test('changes', async () => {
   const cube = Cube(d => d.id)
   const children = cube.range_multiple(d => d.children.map(id => cube.id2d(id).name))
