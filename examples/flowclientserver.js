@@ -1,5 +1,5 @@
-const flow = require('seacreature/flow')
-const tcp = require('seacreature/flow/tcp')
+const flow = require('../flow')
+const tcp = require('../flow/tcp')
 
 const stream = flow.stream()
 flow([ stream, flow.each(console.log) ])
