@@ -5,6 +5,10 @@
 - [ ] Update documentation to include analytics
 - [ ] A real website for this project?
 
+## Questions
+
+- [ ] Is kinesalite a good stream technology to use with seacreature?
+
 Node.js transient event processing inspired by [Riemann](http://riemann.io).
 
 The API is similar to the [Riemann streams API](http://riemann.io/api/riemann.streams.html) and [Riemann streams source](https://github.com/riemann/riemann/blob/master/src/riemann/streams.clj).
