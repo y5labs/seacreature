@@ -3,7 +3,9 @@
 ## Todo
 
 - [ ] Update documentation to include analytics
+- [ ] Update documentation to include persistence
 - [ ] A real website for this project?
+- [ ] Tests for persistence
 
 ## Questions
 
