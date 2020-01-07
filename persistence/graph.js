@@ -13,7 +13,6 @@ module.exports = (db, prefix, dataset = []) => {
     `${prefix}/→/${n}/${child}/${parent}`
   const encode_backward = (n, parent, child) =>
     `${prefix}/←/${n}/${parent}/${child}`
-
   const forward_get = (n, node) => ({
     gt: `${prefix}/→/${n}/${node}/\x00`,
     lt: `${prefix}/→/${n}/${node}/\xff`

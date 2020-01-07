@@ -1,20 +1,21 @@
 const pump = require('../lib/pump')
 const Hub = require('../lib/hub')
 
-const decode_key = key => key.split('/')[1]
-const encode_value = value => JSON.stringify(value)
-const decode_value = value => JSON.parse(value)
-
 // Prefix database with combined batch format
 module.exports = (db, prefix = 'prefix') => {
   const encode_key = (key) => `${prefix}/${key}`
-  const key_first = encode_key('\x00')
-  const key_last = encode_key('\xff')
+  const decode_key = key => key.split('/')[1]
+  const encode_value = value => JSON.stringify(value)
+  const decode_value = value => JSON.parse(value)
   const encode_options = options => ({
     ...options,
     ...{
-      gt: options && options.gt ? encode_key(options.gt) : key_first,
-      lt: options && options.lt ? encode_key(options.lt) : key_last,
+      gt: options && options.gt
+        ? encode_key(options.gt)
+        : encode_key('\x00'),
+      lt: options && options.lt
+        ? encode_key(options.lt)
+        : encode_key('\xff'),
     }
   })
   return {
