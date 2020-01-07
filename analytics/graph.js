@@ -66,12 +66,12 @@ module.exports = (dataset = []) => {
     // Apply a collection of additions and deletions to the dataset
     apply: ({ put = [], del = [] }) => {
       for (const o of put) {
-        add(_forward, o, true)
-        add(_backward, [o[0], o[1], o[2]], true)
+        add(_forward, [o[0], o[1], o[2]], true)
+        add(_backward, [o[0], o[2], o[1]], true)
       }
       for (const o of del) {
-        remove(_forward, o, true)
-        remove(_backward, [o[0], o[1], o[2]], true)
+        remove(_forward, [o[0], o[1], o[2]], true)
+        remove(_backward, [o[0], o[2], o[1]], true)
       }
       clean(_forward)
       clean(_backward)
