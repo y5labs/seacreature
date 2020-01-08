@@ -13,9 +13,9 @@ module.exports = (dataset = []) => {
   }
 
   for (let depth = 0; depth == 0 || _forward[depth - 1]; depth++)
-    for (const p of pathie.get(_forward, [depth]))
-      for (const from of pathie.get(_backward, [0, p]))
-        for (const to of pathie.get(_forward, [depth, p])) {
+    for (const p of pathie.getkeys(_forward, [depth]))
+      for (const from of pathie.getkeys(_backward, [0, p]))
+        for (const to of pathie.getkeys(_forward, [depth, p])) {
           pathie.set(_forward, [depth + 1, from, to], true)
           pathie.set(_backward, [depth + 1, to, from], true)
         }
@@ -41,11 +41,11 @@ module.exports = (dataset = []) => {
       if (!pathie.test(_forward, [0, from, to])) return []
       const ancestors = [[0, to]].concat(
         Object.keys(_forward).map(Number)
-        .map(depth => pathie.get(_forward, [depth, to])
+        .map(depth => pathie.getkeys(_forward, [depth, to])
           .map(d => [depth + 1, d])).flat())
       const descendants = [[0, from]].concat(
         Object.keys(_backward).map(Number)
-        .map(depth => pathie.get(_backward, [depth, from])
+        .map(depth => pathie.getkeys(_backward, [depth, from])
           .map(d => [depth + 1, d])).flat())
       return ancestors.map(a => descendants.map(b =>
         [a[0] + b[0], b[1], a[1]])).flat()
@@ -55,11 +55,11 @@ module.exports = (dataset = []) => {
       if (pathie.test(_forward, [0, from, to])) return []
       const ancestors = [[0, to]].concat(
         Object.keys(_forward).map(Number)
-        .map(depth => pathie.get(_forward, [depth, to])
+        .map(depth => pathie.getkeys(_forward, [depth, to])
           .map(d => [depth + 1, d])).flat())
       const descendants = [[0, from]].concat(
         Object.keys(_backward).map(Number)
-        .map(depth => pathie.get(_backward, [depth, from])
+        .map(depth => pathie.getkeys(_backward, [depth, from])
           .map(d => [depth + 1, d])).flat())
       return ancestors.map(a => descendants.map(b =>
         [a[0] + b[0], b[1], a[1]])).flat()
@@ -69,7 +69,7 @@ module.exports = (dataset = []) => {
       if (!depths) depths = Object.keys(_forward)
       for (const depth of depths)
         for (const n of nodes)
-          for (const d of pathie.get(_forward, [depth, n]))
+          for (const d of pathie.getkeys(_forward, [depth, n]))
             result[d] = true
       return Object.keys(result)
     },
@@ -78,7 +78,7 @@ module.exports = (dataset = []) => {
       if (!depths) depths = Object.keys(_forward)
       for (const depth of depths)
         for (const n of nodes)
-          for (const d of pathie.get(_backward, [depth, n]))
+          for (const d of pathie.getkeys(_backward, [depth, n]))
             result[d] = true
       return Object.keys(result)
     }
