@@ -1,8 +1,8 @@
-module.exports = async ({ db, hub, timeline, transactions, hierarchy, dimensions }) => {
+module.exports = async ({ db, hub, timeline, transactions, dim_hierarchy, dimensions }) => {
   await Promise.all([
     timeline.open(),
     transactions.open(),
-    hierarchy.open(),
+    dim_hierarchy.open(),
     dimensions.open(),
   ])
 
@@ -31,7 +31,6 @@ module.exports = async ({ db, hub, timeline, transactions, hierarchy, dimensions
     const operations = pending
     pending = []
     const toexecute = operations.map(o => o.operations).flat()
-    // console.log(toexecute)
     await db.batch(toexecute)
     await Promise.all(operations.map(o => o.emit('commit')))
     await hub.emit('operations committed')

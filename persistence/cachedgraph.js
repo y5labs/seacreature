@@ -24,7 +24,7 @@ module.exports = (db, prefix = 'graph') => {
         gt: `${prefix}/→/\x00`,
         lt: `${prefix}/→/\xff`
       })
-      .on('data', (key) => {
+      .on('data', key => {
         const { child, parent } = decode_forward(key)
         pathie.set(_forward, [child, parent], true)
       })
@@ -33,7 +33,7 @@ module.exports = (db, prefix = 'graph') => {
         gt: `${prefix}/←/\x00`,
         lt: `${prefix}/←/\xff`
       })
-      .on('data', (key) => {
+      .on('data', key => {
         const { parent, child } = decode_backward(key)
         pathie.set(_backward, [parent, child], true)
       })
@@ -58,7 +58,7 @@ module.exports = (db, prefix = 'graph') => {
       pathie.del(_forward, [child, parent])
       pathie.del(_backward, [parent, child])
     },
-    batch: (operations) => {
+    batch: operations => {
       const ops = []
       for (const op of operations) {
         ops.push({
@@ -87,7 +87,7 @@ module.exports = (db, prefix = 'graph') => {
     },
     isOpen: () => db.isOpen(),
     isClosed: () => db.isClosed(),
-    parents: (child) => {
+    parents: child => {
       if (!_forward[child]) return []
       return Object.keys(_forward[child])
     },
@@ -99,7 +99,7 @@ module.exports = (db, prefix = 'graph') => {
       }
       return false
     },
-    ancestors: (child) => {
+    ancestors: child => {
       let current = []
       let processing = [child]
       let ancestors = []
@@ -112,7 +112,7 @@ module.exports = (db, prefix = 'graph') => {
       }
       return ancestors
     },
-    children: (parent) => {
+    children: parent => {
       if (!_backward[parent]) return []
       return Object.keys(_backward[parent])
     },
@@ -124,7 +124,7 @@ module.exports = (db, prefix = 'graph') => {
       }
       return false
     },
-    descendants: (parent) => {
+    descendants: parent => {
       let current = []
       let processing = [parent]
       let descendants = []
