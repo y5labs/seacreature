@@ -15,16 +15,15 @@ module.exports = async (ctx) => {
           { type: 'put', ts: now.ts, batchid: now.batchid, id: now.id, value: now }]))
       }
     }
-    await ctx.hub.emit('on operations committed', async () => {
-      ctx.hub.emit('transactions changed',
-        await Promise.all(changes.map(async t => {
-          const delta = diff.transaction(t[0], t[1])
-          for (const d of delta)
-            for (const dim of Object.keys(d.dimensions))
-              for (const ancestor of ctx.hierarchy.ancestors(dim))
-                d.dimensions[ancestor] = true
-          return delta
-        })))
-    })
+    await ctx.hub.emit('commit operations')
+    await ctx.hub.emit('transactions changed',
+      await Promise.all(changes.map(async t => {
+        const delta = diff.transaction(t[0], t[1])
+        for (const d of delta)
+          for (const dim of Object.keys(d.dimensions))
+            for (const ancestor of ctx.hierarchy.ancestors(dim))
+              d.dimensions[ancestor] = true
+        return delta
+      })))
   })
 }

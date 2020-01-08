@@ -11,6 +11,7 @@ module.exports = async (ctx) => {
           .filter(d => d[0] == null)
           .map(d => Object.keys(d[1].dimensions || {})
           .map(p => ({ type: 'put', child: d[1].id, parent: p }))).flat()))
-    await ctx.hub.emit('on operations committed', () => ctx.hub.emit('dimensions changed', changes))
+    await ctx.hub.emit('commit operations')
+    await ctx.hub.emit('dimensions changed', changes)
   })
 }
