@@ -1,5 +1,7 @@
 // This datastructure pre-computes all parent, grandparent, nth ancestor and descendants. Modifications are processed as a diff so they can be used to update other datasets.
 
+const Hub = require('../lib/hub')
+
 module.exports = (db, prefix, dataset = []) => {
   const decode_forward = key => {
     const [prefix, literal, n, child, parent] = key.split('/')
@@ -24,13 +26,25 @@ module.exports = (db, prefix, dataset = []) => {
   const read = options =>
     new Promise((resolve, reject) => {
       const result = []
-      db.createKeyStream(options)
+      db.createKeyStream(options || {
+        gt: `${prefix}/\x00`,
+        lt: `${prefix}/\xff`,
+      })
         .on('data', key => { result.push(key) })
         .on('end', () => resolve(result))
     })
-  const getmaxdepth = async () =>
-    Number(decode_forward((
-      await read({ reverse: true, limit: 1 }))[0]).n)
+  const getmaxdepth = async () => {
+    const items = await read({
+      gt: `${prefix}/→/\x00`,
+      lt: `${prefix}/→/\xff`,
+      reverse: true,
+      limit: 1
+    })
+    if (items.length === 1)
+      return Number(decode_forward(items[0]).n)
+    else
+      return 0
+  }
   const getalldepths = async () =>
     [...Array(await getmaxdepth() + 1).keys()]
 
@@ -85,10 +99,11 @@ module.exports = (db, prefix, dataset = []) => {
   const api = {
     open: () => _open,
     read,
-    apply: async ({ put = [], del = [] }) => {
-      const operations = []
+    batch: ({ put = [], del = [] }) => {
+      const result = Hub()
+      result.operations = []
       for (const o of put)
-        operations.push({
+        result.operations.push({
           type: 'put',
           key: encode_forward(o[0], o[1], o[2]),
           value: true
@@ -99,7 +114,7 @@ module.exports = (db, prefix, dataset = []) => {
           value: true
         })
       for (const o of del)
-        operations.push({
+        result.operations.push({
           type: 'del',
           key: encode_forward(o[0], o[1], o[2]),
           value: true
@@ -109,7 +124,7 @@ module.exports = (db, prefix, dataset = []) => {
           key: encode_backward(o[0], o[2], o[1]),
           value: true
         })
-      await db.batch(operations)
+      return result
     },
     del: async (from, to) => {
       try {

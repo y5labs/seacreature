@@ -30,7 +30,9 @@ module.exports = async ({ db, hub, timeline, transactions, hierarchy, dimensions
   hub.on('commit operations', async () => {
     const operations = pending
     pending = []
-    await db.batch(operations.map(o => o.operations).flat())
+    const toexecute = operations.map(o => o.operations).flat()
+    // console.log(toexecute)
+    await db.batch(toexecute)
     await Promise.all(operations.map(o => o.emit('commit')))
     await hub.emit('operations committed')
   })

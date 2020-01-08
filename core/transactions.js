@@ -20,9 +20,8 @@ module.exports = async (ctx) => {
       await Promise.all(changes.map(async t => {
         const delta = diff.transaction(t[0], t[1])
         for (const d of delta)
-          for (const dim of Object.keys(d.dimensions))
-            for (const ancestor of ctx.hierarchy.ancestors(dim))
-              d.dimensions[ancestor] = true
+          for (const ancestor of await ctx.hierarchy.ancestors(Object.keys(d.dimensions)))
+            d.dimensions[ancestor] = true
         return delta
       })))
   })
