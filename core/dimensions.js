@@ -68,14 +68,14 @@ module.exports = async (ctx) => {
           await commit()
         }
 
-      await commit()
-
       const diffs = { put: {}, del: {} }
-      const diffpayload = []
+      const trans_changes = {}
       for (const d of deletions) {
         const children = await ctx.trans_hierarchy.children(d[0].id)
-        for (const child of children)
+        for (const child of children) {
+          pathie.getorset(trans_changes, [child], []).push(d[0].id)
           pathie.getorset(diffs.del, [child], []).push(d[0].id)
+        }
       }
       for (const d of deltas.put) {
         const children = await ctx.trans_hierarchy.children(d[1])
@@ -87,6 +87,8 @@ module.exports = async (ctx) => {
         for (const child of children)
           pathie.getorset(diffs.del, [child], []).push(d[2])
       }
+
+      const diffpayload = []
       for (const id of Object.keys(diffs.put)) {
         const t = diff.transaction(null, await ctx.transactions.get(id))
         t.dimensions = diffs.put[id].reduce((o, i) => {
@@ -104,8 +106,23 @@ module.exports = async (ctx) => {
         diffpayload.push(t)
       }
 
+      const changespayload = []
+      for (const id of Object.keys(trans_changes)) {
+        const t = await ctx.transactions.get(id)
+        t.dimensions = (await ctx.trans_hierarchy.parents(id))
+          .reduce((o, i) => {
+            o[i] = true
+            return o
+          }, {})
+        const now = { ...t, dimensions: { ...t.dimensions } }
+        for (const dim of trans_changes[id])
+          delete now.dimensions[dim]
+        changespayload.push([t, now])
+      }
+
       await ctx.hub.emit('dimensions changed', changes)
       await ctx.hub.emit('dimension link deltas', deltas)
+      await ctx.hub.emit('transactions changed', changespayload)
       await ctx.hub.emit('transaction diff', diffpayload)
 
     } catch (e) {

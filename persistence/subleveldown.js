@@ -3,8 +3,8 @@ const Hub = require('../lib/hub')
 
 // Prefix database with combined batch format
 module.exports = (db, prefix = 'prefix') => {
-  const encode_key = (key) => `${prefix}/${key}`
-  const decode_key = key => key.split('/')[1]
+  const encode_key = (key) => `${prefix}·${key}`
+  const decode_key = key => key.split('·')[1]
   const encode_value = value => JSON.stringify(value)
   const decode_value = value => JSON.parse(value)
   const encode_options = options => ({

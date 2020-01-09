@@ -4,39 +4,39 @@ const Hub = require('../lib/hub')
 
 module.exports = (db, prefix, dataset = []) => {
   const decode_forward = key => {
-    const [prefix, literal, n, child, parent] = key.split('/')
+    const [prefix, literal, n, child, parent] = key.split('·')
     return { n, child, parent }
   }
   const decode_backward = key => {
-    const [prefix, literal, n, parent, child] = key.split('/')
+    const [prefix, literal, n, parent, child] = key.split('·')
     return { n, parent, child }
   }
   const encode_forward = (n, child, parent) =>
-    `${prefix}/→/${n}/${child}/${parent}`
+    `${prefix}·→·${n}·${child}·${parent}`
   const encode_backward = (n, parent, child) =>
-    `${prefix}/←/${n}/${parent}/${child}`
+    `${prefix}·←·${n}·${parent}·${child}`
   const forward_get = (n, node) => ({
-    gt: `${prefix}/→/${n}/${node}/\x00`,
-    lt: `${prefix}/→/${n}/${node}/\xff`
+    gt: `${prefix}·→·${n}·${node}·\x00`,
+    lt: `${prefix}·→·${n}·${node}·\xff`
   })
   const backward_get = (n, node) => ({
-    gt: `${prefix}/←/${n}/${node}/\x00`,
-    lt: `${prefix}/←/${n}/${node}/\xff`
+    gt: `${prefix}·←·${n}·${node}·\x00`,
+    lt: `${prefix}·←·${n}·${node}·\xff`
   })
   const read = options =>
     new Promise((resolve, reject) => {
       const result = []
       db.createKeyStream(options || {
-        gt: `${prefix}/\x00`,
-        lt: `${prefix}/\xff`,
+        gt: `${prefix}·\x00`,
+        lt: `${prefix}·\xff`,
       })
         .on('data', key => { result.push(key) })
         .on('end', () => resolve(result))
     })
   const getmaxdepth = async () => {
     const items = await read({
-      gt: `${prefix}/→/\x00`,
-      lt: `${prefix}/→/\xff`,
+      gt: `${prefix}·→·\x00`,
+      lt: `${prefix}·→·\xff`,
       reverse: true,
       limit: 1
     })
@@ -62,8 +62,8 @@ module.exports = (db, prefix, dataset = []) => {
       // Could keep an in-memory store instead as we've created
       // all this data ourselves.
       const nodes = await read({
-        gt: `${prefix}/→/${depth}/\x00`,
-        lt: `${prefix}/→/${depth}/\xff`
+        gt: `${prefix}·→·${depth}·\x00`,
+        lt: `${prefix}·→·${depth}·\xff`
       })
       if (nodes.length == 0) break
       const parents = Object.keys(nodes.map(decode_forward)

@@ -7,9 +7,9 @@ const pad_timestamp = ts => ts.toString().padStart(13, '0')
 // const ts = (new Date()).valueOf()
 // const id = require('uuid/v4')()
 module.exports = (db, prefix = 'timeseries') => {
-  const encode_key = (ts, id) => `${prefix}/${pad_timestamp(ts)}/${id}`
+  const encode_key = (ts, id) => `${prefix}·${pad_timestamp(ts)}·${id}`
   const decode_key = key => {
-    const [prefix, ts, id] = key.split('/')
+    const [prefix, ts, id] = key.split('·')
     return { ts: parseInt(ts), id }
   }
   const encode_value = value => JSON.stringify(value)
@@ -17,8 +17,8 @@ module.exports = (db, prefix = 'timeseries') => {
   const encode_options = options => ({
     ...options,
     ...{
-      gt: options && options.gt ? encode_key(options.gt, '\x00') : `${prefix}/\x00`,
-      lt: options && options.lt ? encode_key(options.lt, '\xff') : `${prefix}/\xff`,
+      gt: options && options.gt ? encode_key(options.gt, '\x00') : `${prefix}·\x00`,
+      lt: options && options.lt ? encode_key(options.lt, '\xff') : `${prefix}·\xff`,
     }
   })
   return {

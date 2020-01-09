@@ -5,15 +5,15 @@ const pathie = require('../lib/pathie')
 
 module.exports = (db, prefix = 'graph') => {
   const encode_forward = (child, parent) =>
-    `${prefix}/→/${child}/${parent}`
+    `${prefix}·→·${child}·${parent}`
   const encode_backward = (parent, child) =>
-    `${prefix}/←/${parent}/${child}`
+    `${prefix}·←·${parent}·${child}`
   const decode_forward = key => {
-    const [prefix, literal, child, parent] = key.split('/')
+    const [prefix, literal, child, parent] = key.split('·')
     return { child, parent }
   }
   const decode_backward = key => {
-    const [prefix, literal, parent, child] = key.split('/')
+    const [prefix, literal, parent, child] = key.split('·')
     return { parent, child }
   }
 
@@ -21,8 +21,8 @@ module.exports = (db, prefix = 'graph') => {
   const _backward = {}
   const _open = db.open().then(() => Promise.all([
     new Promise((resolve, reject) => db.createKeyStream({
-        gt: `${prefix}/→/\x00`,
-        lt: `${prefix}/→/\xff`
+        gt: `${prefix}·→·\x00`,
+        lt: `${prefix}·→·\xff`
       })
       .on('data', key => {
         const { child, parent } = decode_forward(key)
@@ -30,8 +30,8 @@ module.exports = (db, prefix = 'graph') => {
       })
       .on('end', resolve)),
     new Promise((resolve, reject) => db.createKeyStream({
-        gt: `${prefix}/←/\x00`,
-        lt: `${prefix}/←/\xff`
+        gt: `${prefix}·←·\x00`,
+        lt: `${prefix}·←·\xff`
       })
       .on('data', key => {
         const { parent, child } = decode_backward(key)

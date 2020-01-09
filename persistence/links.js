@@ -7,23 +7,23 @@ module.exports = (db, prefix = 'graph') => {
     new Promise((resolve, reject) => {
       const result = []
       db.createKeyStream(options || {
-        gt: `${prefix}/\x00`,
-        lt: `${prefix}/\xff`,
+        gt: `${prefix}·\x00`,
+        lt: `${prefix}·\xff`,
       })
         .on('data', key => { result.push(key) })
         .on('end', () => resolve(result))
     })
 
   const encode_forward = (child, parent) =>
-    `${prefix}/→/${child}/${parent}`
+    `${prefix}·→·${child}·${parent}`
   const encode_backward = (parent, child) =>
-    `${prefix}/←/${parent}/${child}`
+    `${prefix}·←·${parent}·${child}`
   const decode_forward = key => {
-    const [prefix, literal, child, parent] = key.split('/')
+    const [prefix, literal, child, parent] = key.split('·')
     return { child, parent }
   }
   const decode_backward = key => {
-    const [prefix, literal, parent, child] = key.split('/')
+    const [prefix, literal, parent, child] = key.split('·')
     return { parent, child }
   }
 
