@@ -166,22 +166,22 @@ module.exports = (db, prefix, dataset = []) => {
         [a[0] + b[0], b[1], a[1]])).flat()
     },
     ancestors: async (nodes, depths = null) => {
-      const result = {}
+      const result = []
       if (!depths) depths = await getalldepths()
       for (const depth of depths)
         for (const n of nodes)
           for (const d of await read(forward_get(depth, n)))
-            result[decode_forward(d).parent] = true
-      return Object.keys(result)
+            result.push(decode_forward(d).parent)
+      return result
     },
     descendants: async (nodes, depths = null) => {
-      const result = {}
+      const result = []
       if (!depths) depths = await getalldepths()
       for (const depth of depths)
         for (const n of nodes)
           for (const d of await read(backward_get(depth, n)))
-            result[decode_backward(d).child] = true
-      return Object.keys(result)
+            result.push(decode_backward(d).child)
+      return result
     }
   }
   return api

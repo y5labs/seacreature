@@ -1,7 +1,7 @@
 const diff = require('./diff')
 
 module.exports = async (ctx) => {
-  const rec = (ops) => ctx.hub.emit('record operations', ops)
+  const rec = ops => ctx.hub.emit('record operations', ops)
   const commit = () => ctx.hub.emit('commit operations')
 
   ctx.hub.on('change dimensions', async (changes = []) => {
@@ -75,6 +75,7 @@ module.exports = async (ctx) => {
 
     } catch (e) {
       ctx.hub.emit('cancel operations')
+      console.error(e)
     }
   })
 }
