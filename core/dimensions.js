@@ -6,10 +6,7 @@ module.exports = async (ctx) => {
 
   ctx.hub.on('change dimensions', async (changes = []) => {
     try {
-      const deltas = {
-        del: [],
-        put: []
-      }
+      const deltas = { del: [], put: [] }
 
       // Deleting
       const deletions = changes.filter(d => d[0] !== null && d[1] === null)
@@ -21,8 +18,8 @@ module.exports = async (ctx) => {
           await commit()
         }
       }
-      await rec(ctx.dimensions.batch(deletions
-          .map(d => ({ type: 'del', key: d[0].id }))))
+      await rec(ctx.dimensions.batch(deletions.map(d =>
+        ({ type: 'del', key: d[0].id }))))
 
       // Updating
       const updates = changes.filter(d => d[0] !== null && d[1] !== null)

@@ -1,4 +1,18 @@
 const diff = require('./diff')
+const val = t => ({
+  id: t.id,
+  batchid: t.batchid,
+  ts: t.ts,
+  attrs: t.attrs,
+  measures: t.measures
+})
+const puttime = t => ({
+  type: 'put',
+  ts: t.ts,
+  batchid: t.batchid,
+  id: t.id,
+  value: val(t)
+})
 
 module.exports = async (ctx) => {
   const rec = ops => ctx.hub.emit('record operations', ops)
@@ -8,6 +22,7 @@ module.exports = async (ctx) => {
     try {
       const diffs = []
 
+      // Deleting
       const deletions = changes.filter(d => d[0] !== null && d[1] === null)
       await rec(ctx.trans_hierarchy.batch({
         del: (await Promise.all(deletions
@@ -53,50 +68,16 @@ module.exports = async (ctx) => {
       await rec(ctx.transactions.batch(updates
         .filter(d => JSON.stringify(d[0]) != JSON.stringify(d[1]))
         .map(d => ({
-          type: 'put', key: `${d[1].batchid}/${d[1].id}`, value: {
-            id: d[1].id,
-            batchid: d[1].batchid,
-            ts: d[1].ts,
-            attrs: d[1].attrs,
-            measures: d[1].measures
-          }}))))
+          type: 'put', key: `${d[1].batchid}/${d[1].id}`, value: val(d[1])}))))
       await rec(ctx.timeline.batch(updates
         .filter(d => JSON.stringify(d[0]) != JSON.stringify(d[1]))
-        .map(d => ({
-          type: 'put',
-          ts: d[1].ts,
-          batchid: d[1].batchid,
-          id: d[1].id,
-          value: {
-            id: d[1].id,
-            batchid: d[1].batchid,
-            ts: d[1].ts,
-            attrs: d[1].attrs,
-            measures: d[1].measures
-          }}))))
+        .map(d => puttime(d[1]))))
 
       // Creating
       const creations = changes.filter(d => d[0] === null && d[1] !== null)
       await rec(ctx.transactions.batch(creations.map(d => ({
-        type: 'put', key: `${d[1].batchid}/${d[1].id}`, value: {
-          id: d[1].id,
-          batchid: d[1].batchid,
-          ts: d[1].ts,
-          attrs: d[1].attrs,
-          measures: d[1].measures
-        }}))))
-      await rec(ctx.timeline.batch(creations.map(d => ({
-        type: 'put',
-        ts: d[1].ts,
-        batchid: d[1].batchid,
-        id: d[1].id,
-        value: {
-          id: d[1].id,
-          batchid: d[1].batchid,
-          ts: d[1].ts,
-          attrs: d[1].attrs,
-          measures: d[1].measures
-        }}))))
+        type: 'put', key: `${d[1].batchid}/${d[1].id}`, value: val(d[1])}))))
+      await rec(ctx.timeline.batch(creations.map(d => puttime(d[1]))))
       await rec(ctx.trans_hierarchy.batch({
         put: creations.map(d => {
           diffs.push([
