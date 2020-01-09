@@ -25,7 +25,7 @@ const measures = (prev, now) => {
   return res
 }
 
-const transaction2 = (prev, now) => {
+const transaction = (prev, now) => {
   if (!prev) return { ...now, dimensions: { ...now.dimensions },
     measures: measures({}, now.measures) }
   if (!now) return { ...prev, dimensions: { ...prev.dimensions },
@@ -34,35 +34,4 @@ const transaction2 = (prev, now) => {
     measures: measures(prev.measures, now.measures) }
 }
 
-const transaction = (prev, now) => {
-  if (!prev) return [{
-    ...now, dimensions: { ...now.dimensions },
-    measures: measures({}, now.measures) }]
-  if (!now) return [{
-    ...prev, dimensions: { ...prev.dimensions },
-    measures: measures(prev.measures, {}) }]
-  if (prev.ts != now.ts) return [{
-    ...prev, dimensions: { ...prev.dimensions },
-      measures: measures(prev.measures, {}) },
-    { ...now, dimensions: { ...now.dimensions },
-      measures: measures({}, now.measures) }
-  ]
-  const res = []
-  const diff = dimensions(prev.dimensions, now.dimensions)
-  if (Object.keys(diff.del).length > 0) res.push({
-    ...prev, dimensions: diff.del,
-    measures: measures(prev.measures, {})
-  })
-  if (Object.keys(diff.put).length > 0) res.push({
-    ...now, dimensions: diff.put,
-    measures: measures({}, now.measures)
-  })
-  if (Object.keys(diff.same).length > 0) {
-    const m = measures(prev.measures, now.measures)
-    if (Object.keys(m) > 0)
-      res.push({ ...now, dimensions: same, measures: m })
-  }
-  return res
-}
-
-module.exports = { dimensions, measures, transaction, transaction2 }
+module.exports = { dimensions, measures, transaction }

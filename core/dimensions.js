@@ -1,4 +1,5 @@
 const diff = require('./diff')
+const pathie = require('../lib/pathie')
 
 module.exports = async (ctx) => {
   const rec = ops => ctx.hub.emit('record operations', ops)
@@ -66,9 +67,46 @@ module.exports = async (ctx) => {
           await rec(ctx.dim_hierarchy.batch({ put }))
           await commit()
         }
+
       await commit()
+
+      const diffs = { put: {}, del: {} }
+      const diffpayload = []
+      for (const d of deletions) {
+        const children = await ctx.trans_hierarchy.children(d[0].id)
+        for (const child of children)
+          pathie.getorset(diffs.del, [child], []).push(d[0].id)
+      }
+      for (const d of deltas.put) {
+        const children = await ctx.trans_hierarchy.children(d[1])
+        for (const child of children)
+          pathie.getorset(diffs.put, [child], []).push(d[2])
+      }
+      for (const d of deltas.del) {
+        const children = await ctx.trans_hierarchy.children(d[1])
+        for (const child of children)
+          pathie.getorset(diffs.del, [child], []).push(d[2])
+      }
+      for (const id of Object.keys(diffs.put)) {
+        const t = diff.transaction(null, await ctx.transactions.get(id))
+        t.dimensions = diffs.put[id].reduce((o, i) => {
+          o[i] = true
+          return o
+        }, {})
+        diffpayload.push(t)
+      }
+      for (const id of Object.keys(diffs.del)) {
+        const t = diff.transaction(await ctx.transactions.get(id), null)
+        t.dimensions = diffs.del[id].reduce((o, i) => {
+          o[i] = true
+          return o
+        }, {})
+        diffpayload.push(t)
+      }
+
       await ctx.hub.emit('dimensions changed', changes)
       await ctx.hub.emit('dimension link deltas', deltas)
+      await ctx.hub.emit('transaction diff', diffpayload)
 
     } catch (e) {
       ctx.hub.emit('cancel operations')
