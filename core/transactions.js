@@ -89,11 +89,11 @@ module.exports = async (ctx) => {
       await ctx.hub.emit('transactions changed', changes)
       await ctx.hub.emit('transaction diff',
         await Promise.all(diffs.map(async d => {
-        d[0].dimensions = d[1].concat(await ctx.dim_hierarchy.ancestors(d[1])).reduce((o, i) => {
-          o[i] = true
-          return o
-        }, {})
-        return d[0]
+          d[0].dimensions = d[1].concat(await ctx.dim_hierarchy.ancestors(d[1])).reduce((o, i) => {
+            o[i] = true
+            return o
+          }, {})
+          return d[0]
       })))
 
     } catch (e) {

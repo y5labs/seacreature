@@ -3,7 +3,7 @@ const Hub = require('../lib/hub')
 
 // Prefix database with combined batch format
 module.exports = (db, prefix = 'prefix') => {
-  const encode_key = (key) => `${prefix}·${key}`
+  const encode_key = key => `${prefix}·${key}`
   const decode_key = key => key.split('·')[1]
   const encode_value = value => JSON.stringify(value)
   const decode_value = value => JSON.parse(value)
@@ -22,8 +22,8 @@ module.exports = (db, prefix = 'prefix') => {
     open: () => db.open(),
     close: () => db.close(),
     put: (key, value) => db.put(encode_key(key), encode_value(value)),
-    get: (key) => db.get(encode_key(key)).then(decode_value),
-    del: (key) => db.del(encode_key(key)),
+    get: key => db.get(encode_key(key)).then(decode_value),
+    del: key => db.del(encode_key(key)),
     batch: ops => {
       const result = Hub()
       result.operations = ops.map(o => ({
@@ -37,14 +37,14 @@ module.exports = (db, prefix = 'prefix') => {
     isClosed: () => db.isClosed(),
     createReadStream: options =>
       pump(db.createReadStream(encode_options(options)),
-        (kv) => ({
+        kv => ({
           key: decode_key(kv.key),
           value: decode_value(kv.value)})),
     createKeyStream: options =>
       pump(db.createKeyStream(encode_options(options)),
-        (key) => decode_key(key)),
+        key => decode_key(key)),
     createValueStream: options =>
       pump(db.createValueStream(encode_options(options)),
-        (value) => decode_value(value))
+        value => decode_value(value))
   }
 }
