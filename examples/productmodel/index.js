@@ -5,6 +5,7 @@ const { DateTime } = require('luxon')
 const papa = require('papaparse')
 const stemmer = require('stemmer')
 const perf = require('../../lib/perf')
+const pathie = require('../../lib/pathie')
 const Cube = require('../../analytics/cube')
 
 perf()
@@ -119,6 +120,21 @@ orderitems.on('selection changed', ({ put, del }) => {
       getorset(orderitems_bysupplier, id, -1)
 })
 
+
+const supplier_country_count = {}
+suppliers.on('selection changed', ({ put, del }) => {
+  for (const s of put)
+    pathie.assign(supplier_country_count, [s.Country], c => (c || 0) + 1)
+  for (const s of del)
+    pathie.assign(supplier_country_count, [s.Country], c => (c || 0) - 1)
+})
+// supplier_country.on('batch', ({ diff }) => {
+//   console.log(diff)
+// })
+// supplier_country.on('filter changed', diff => {
+//   console.log(diff)
+// })
+
 const orderitems_indicies = await orderitems.batch({ put: data.OrderItems })
 const orders_indicies = await orders.batch({ put: data.Orders })
 const customers_indicies = await customers.batch({ put: data.Customers })
@@ -141,16 +157,27 @@ const logcounts = (desc) =>
     .map(d => counts[d].toString().padStart(12, ' '))
     .join(''), desc || '')
 
-logcounts('All data')
+// console.log(Array.from(supplier_country.filtered(Infinity)))
+
+const print_supplier_countries = () => {
+  let max = 0
+  Object.values(supplier_country_count).forEach(c => max = Math.max(max, c))
+  console.log(
+    Object.keys(supplier_country_count)
+    .sort()
+    .map(c => [c, supplier_country_count[c], max]))
+}
+
+print_supplier_countries('All data')
 await product_bypackage('bottles', 'bottles')
-logcounts('Packed in bottles')
+print_supplier_countries('Packed in bottles')
 await supplier_country.selectnone()
 await supplier_country({ put: ['USA'] })
-logcounts('From the USA')
+print_supplier_countries('From the USA')
 await product_bypackage(null)
-logcounts('All packaging')
+print_supplier_countries('All packaging')
 await supplier_country.selectall()
-logcounts('All countries')
+print_supplier_countries('All countries')
 
 })()
 
