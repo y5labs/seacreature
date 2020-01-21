@@ -1,7 +1,5 @@
 import Vue from 'vue'
-import Vuex from 'vuex'
 import Router from 'vue-router'
-import { sync } from 'vuex-router-sync'
 import Hub from 'seacreature/lib/hub'
 import inject from 'seacreature/lib/inject'
 
@@ -9,17 +7,6 @@ import inject from 'seacreature/lib/inject'
 
 Vue.config.devtools = false
 Vue.config.productionTip = false
-
-// Stores via modules
-// https://vuex.vuejs.org/guide/modules.html
-Vue.use(Vuex)
-const modules = {}
-for (let module of inject.many('store'))
-  modules[module.name] = module
-const store = new Vuex.Store({
-  strict: process.env.NODE_ENV !== 'production',
-  modules
-})
 
 // Routes
 Vue.use(Router)
@@ -33,9 +20,6 @@ const router = new Router({
   base: process.env.BASE_URL
 })
 
-// Sync
-sync(store, router)
-
 // TODO: Support CSRF with Express
 // // Setup axios with CSRF protection
 // import axios from 'axios'
@@ -44,27 +28,30 @@ sync(store, router)
 // if (token) axios.defaults.headers.common['X-CSRF-TOKEN'] = token.content
 // else console.error('CSRF token not found: https://laravel.com/docs/csrf#csrf-x-csrf-token')
 
-// Setup event bus hub
+// Setup event bus hub and state
 const hub = Hub()
+const state = {}
 Vue.use({
   install: (Vue, options) => {
     Vue.mixin({
       beforeCreate: function () {
         const options = this.$options
-        if (options.hub)
-          this.$hub = options.hub
+        if (options.hub) this.$hub = options.hub
         else if (options.parent && options.parent.$hub)
           this.$hub = options.parent.$hub
+        if (options.state) this.$state = options.state
+        else if (options.parent && options.parent.$state)
+          this.$state = options.parent.$state
       }
     })
   }
 })
 
+
 // launch Vue
 const props = {}
 const scene = new Vue({
-  router, store, hub, render: h =>
-    h('router-view', { props: props })
+  router, state, hub, render: h => h('router-view', { props: props })
 })
 
 // Unidirectional data flow
@@ -79,9 +66,9 @@ hub.on('reset', (p) => {
 // an opportunity for functional components to query
 router.beforeResolve((route, from, next) => {
   const queryctx = {
-    state: store.state,
     route,
     hub,
+    state,
     props,
     router
   }
@@ -95,7 +82,7 @@ router.beforeResolve((route, from, next) => {
 router.afterEach((to, from) => hub.emit('reset'))
 
 // Dispatch to many pods
-const podctx = { store, router, hub, scene, props }
+const podctx = { router, hub, state, scene, props }
 for (let pod of inject.many('pod')) await pod(podctx)
 // unidirectional data flow - router does not pass through
 // it's props so we have to inject them
