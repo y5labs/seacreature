@@ -37,27 +37,6 @@ inject('pod', ({ hub, state }) => {
     }
     await hub.emit('update')
   })
-  hub.on('filter customer and supplier by country', async country => {
-    if (country) {
-      await c.supplier_country.hidenulls()
-      await c.supplier_country.selectnone()
-      await c.supplier_country({ put: [country] })
-      state.filters.supplierbycountry = country
-      await c.customer_country.hidenulls()
-      await c.customer_country.selectnone()
-      await c.customer_country({ put: [country] })
-      state.filters.customerbycountry = country
-    }
-    else {
-      await c.supplier_country.shownulls()
-      await c.supplier_country.selectall()
-      delete state.filters.supplierbycountry
-      await c.customer_country.shownulls()
-      await c.customer_country.selectall()
-      delete state.filters.customerbycountry
-    }
-    await hub.emit('update')
-  })
   hub.on('filter supplier by id', async name => {
     if (name) {
       await c.supplier_byid(name)
