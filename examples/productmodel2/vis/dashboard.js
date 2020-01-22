@@ -132,24 +132,6 @@ export default component({
         }))
       ]),
       h('div.box', [
-        h('h2', [
-          'Products by units ',
-          h('small', `${state.cube.counts.product.selected}/${state.cube.counts.product.total}`)
-        ]),
-        state.filters.productbyid
-          ? h('a', { on: { click: clearproductbyid }, attrs: { href: '#' } }, `Clear ${state.cube.product_id2d(state.filters.productbyid).ProductName}`)
-          : [],
-        h('ul', productbyunits.rows.map(s => {
-          const click = e => {
-            e.preventDefault()
-            hub.emit('filter product by id', s.key)
-          }
-          if (s.value == 0) return []
-          return h('li', [ h('a', { on: { click }, attrs: { href: '#' } },
-            `${state.cube.product_id2d(s.key).ProductName}: ${s.value}`)])
-        }))
-      ]),
-      h('div.box', [
         h('h2', 'Countries by spend position '),
         h('ul', countrybyspendposition.rows.map(s => {
           if (s.value < 0.1 && s.value > -0.1) return []
