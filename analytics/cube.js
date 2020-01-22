@@ -62,9 +62,9 @@ module.exports = (identity) => {
 
   const dimensions = []
 
-  const i2d = (i) => data.get(index.get(i))
-  const i2id = (i) => index.get(i)
-  const id2d = (id) => data.get(id)
+  const i2d = i => data.get(index.get(i))
+  const i2id = i => index.get(i)
+  const id2d = id => data.get(id)
 
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
