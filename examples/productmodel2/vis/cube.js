@@ -5,6 +5,7 @@ const { DateTime } = require('luxon')
 const stemmer = require('stemmer')
 const pathie = require('seacreature/lib/pathie')
 const Cube = require('seacreature/analytics/cube')
+const numeral = require('numeral')
 
 let c = null
 
@@ -94,8 +95,7 @@ inject('pod', ({ hub, state }) => {
   })
   hub.on('load cube', async () => {
     if (c) return
-    c = {}
-    state.cube = {}
+    state.cube = c = {}
     state.filters = {}
     const data = (await Promise.all(
       ['Customers', 'Orders', 'OrderItems', 'Products', 'Suppliers']
@@ -121,52 +121,53 @@ inject('pod', ({ hub, state }) => {
     }
 
     // Supplier — Id, CompanyName, ContactName, City, Country, Phone, Fax
-    c.suppliers = Cube(supplier => supplier.Id)
-    c.supplier_byid = c.suppliers.range_single(supplier => supplier.Id)
-    c.supplier_bycompanyname = c.suppliers.range_single(supplier => supplier.CompanyName)
-    c.supplier_bycontactname = c.suppliers.range_single(supplier => supplier.ContactName)
-    c.supplier_city = c.suppliers.set_single(supplier => supplier.City)
-    c.supplier_country = c.suppliers.set_single(supplier => supplier.Country)
-    c.supplier_byphone = c.suppliers.range_single(supplier => supplier.Phone)
-    c.supplier_byfax = c.suppliers.range_single(supplier => supplier.Fax)
-    c.supplier_byproduct = c.suppliers.set_multiple(supplier => c.product_bysupplier.lookup(supplier.Id))
+    c.suppliers = Cube(s => s.Id)
+    c.supplier_byid = c.suppliers.range_single(s => s.Id)
+    c.supplier_bycompanyname = c.suppliers.range_single(s => s.CompanyName)
+    c.supplier_bycontactname = c.suppliers.range_single(s => s.ContactName)
+    c.supplier_city = c.suppliers.set_single(s => s.City)
+    c.supplier_country = c.suppliers.set_single(s => s.Country)
+    c.supplier_byphone = c.suppliers.range_single(s => s.Phone)
+    c.supplier_byfax = c.suppliers.range_single(s => s.Fax)
+    c.supplier_byproduct = c.suppliers.set_multiple(s => c.product_bysupplier.lookup(s.Id))
 
     // Product — Id, ProductName, SupplierId, UnitPrice, Package, IsDiscontinued
-    c.products = Cube(product => product.Id)
-    c.product_byid = c.products.range_single(product => product.Id)
-    c.product_byproductname = c.products.range_single(product => product.ProductName)
-    c.product_bysupplier = c.products.set_single(product => product.SupplierId)
-    c.product_byunitprice = c.products.range_single(product => product.UnitPrice)
-    c.product_bypackage = c.products.range_multiple_text(product => product.Package, stemmer)
-    c.product_byisdiscontinued = c.products.range_single(product => product.IsDiscontinued)
-    c.product_byorderitem = c.products.set_multiple(product => c.orderitem_byproduct.lookup(product.Id))
+    c.products = Cube(p => p.Id)
+    c.product_byid = c.products.range_single(p => p.Id)
+    c.product_byproductname = c.products.range_single(p => p.ProductName)
+    c.product_bysupplier = c.products.set_single(p => p.SupplierId)
+    c.product_byunitprice = c.products.range_single(p => p.UnitPrice)
+    c.product_bypackage = c.products.range_multiple_text(p => p.Package, stemmer)
+    c.product_byisdiscontinued = c.products.range_single(p => p.IsDiscontinued)
+    c.product_byorderitem = c.products.set_multiple(p => c.orderitem_byproduct.lookup(p.Id))
 
     // Order — Id, OrderDate, CustomerId, TotalAmount, OrderNumber
-    c.orders = Cube(order => order.Id)
-    c.order_byid = c.orders.range_single(order => order.Id)
-    c.order_bytime = c.orders.range_single(order => order.ts)
-    c.order_bycustomer = c.orders.set_single(order => order.CustomerId)
-    c.order_bytotalamount = c.orders.range_single(order => order.TotalAmount)
-    c.order_byordernumber = c.orders.range_single(order => order.OrderNumber)
-    c.order_byorderitem = c.orders.set_multiple(order => c.orderitem_byorder.lookup(order.Id))
+    c.orders = Cube(o => o.Id)
+    c.order_byid = c.orders.range_single(o => o.Id)
+    c.order_bytime = c.orders.range_single(o => o.ts)
+    c.order_bycustomer = c.orders.set_single(o => o.CustomerId)
+    c.order_bytotalamount = c.orders.range_single(o => o.TotalAmount)
+    c.order_byordernumber = c.orders.range_single(o => o.OrderNumber)
+    c.order_byorderitem = c.orders.set_multiple(o => c.orderitem_byorder.lookup(o.Id))
 
     // Customer — Id, FirstName, LastName, City, Country, Phone
-    c.customers = Cube(customer => customer.Id)
-    c.customer_byid = c.customers.range_single(customer => customer.Id)
-    c.customer_byfirstname = c.customers.range_single(customer => customer.FirstName)
-    c.customer_bylastname = c.customers.range_single(customer => customer.LastName)
-    c.customer_city = c.customers.set_single(customer => customer.City)
-    c.customer_country = c.customers.set_single(customer => customer.Country)
-    c.customer_byphone = c.customers.range_single(customer => customer.Phone)
-    c.customer_byorder = c.customers.set_multiple(customer => c.order_bycustomer.lookup(customer.Id))
+    c.customers = Cube(u => u.Id)
+    c.customer_byid = c.customers.range_single(u => u.Id)
+    c.customer_byfirstname = c.customers.range_single(u => u.FirstName)
+    c.customer_bylastname = c.customers.range_single(u => u.LastName)
+    c.customer_city = c.customers.set_single(u => u.City)
+    c.customer_country = c.customers.set_single(u => u.Country)
+    c.customer_byphone = c.customers.range_single(u => u.Phone)
+    c.customer_byorder = c.customers.set_multiple(u => c.order_bycustomer.lookup(u.Id))
 
     // OrderItem — Id, OrderId, ProductId, UnitPrice, Quantity
-    c.orderitems = Cube(orderitem => orderitem.Id)
-    c.orderitem_byid = c.orderitems.range_single(orderitem => orderitem.Id)
-    c.orderitem_byorder = c.orderitems.set_single(orderitem => orderitem.OrderId)
-    c.orderitem_byproduct = c.orderitems.set_single(orderitem => orderitem.ProductId)
-    c.orderitem_byunitprice = c.orderitems.range_single(orderitem => orderitem.UnitPrice)
-    c.orderitem_byquantity = c.orderitems.range_single(orderitem => orderitem.Quantity)
+    c.orderitems = Cube(i => i.Id)
+    c.orderitem_byid = c.orderitems.range_single(i => i.Id)
+    c.orderitem_byorder = c.orderitems.set_single(i => i.OrderId)
+    c.orderitem_byproduct = c.orderitems.set_single(i => i.ProductId)
+    c.orderitem_byunitprice = c.orderitems.range_single(i => i.UnitPrice)
+    c.orderitem_byquantity = c.orderitems.range_single(i => i.Quantity)
+    c.orderitem_byprice = c.orderitems.range_single(i => i.UnitPrice * i.Quantity)
 
     c.products.link_to(c.suppliers, c.supplier_byproduct)
     c.suppliers.link_to(c.products, c.product_bysupplier)
@@ -177,14 +178,26 @@ inject('pod', ({ hub, state }) => {
     c.orderitems.link_to(c.orders, c.order_byorderitem)
     c.orders.link_to(c.orderitems, c.orderitem_byorder)
 
-    state.cube.product_id2d = c.products.id2d
-    state.cube.order_id2d = c.orders.id2d
-    state.cube.supplier_id2d = c.suppliers.id2d
-    state.cube.orderitem_id2d = c.orderitems.id2d
-    state.cube.customer_id2d = c.customers.id2d
+    c.product_id2d = c.products.id2d
+    c.order_id2d = c.orders.id2d
+    c.supplier_id2d = c.suppliers.id2d
+    c.orderitem_id2d = c.orderitems.id2d
+    c.customer_id2d = c.customers.id2d
+
+    c.product_desc = id => c.product_id2d(id).ProductName
+    c.supplier_desc = id => c.supplier_id2d(id).CompanyName
+    c.customer_desc = id => {
+      const customer = c.customer_id2d(id)
+      return `${customer.FirstName} ${customer.LastName}`
+    }
+    c.order_desc = id => c.order_id2d(id).OrderNumber
+    c.orderitem_desc = id => {
+      const orderitem = c.orderitem_id2d(id)
+      return `${orderitem.Quantity} ✕ ${c.product_id2d(orderitem.ProductId).ProductName} @ ${numeral(orderitem.UnitPrice).format('$0,0')}`
+    }
 
     // count projections
-    state.cube.counts = {
+    c.counts = {
       supplier: { selected: 0, total: 0 },
       product: { selected: 0, total: 0 },
       order: { selected: 0, total: 0 },
@@ -193,9 +206,9 @@ inject('pod', ({ hub, state }) => {
     }
     const rec_counts = (cube, key) => {
       cube.on('selection changed', ({ put, del }) =>
-        state.cube.counts[key].selected += put.length - del.length)
+        c.counts[key].selected += put.length - del.length)
       cube.on('batch', ({ put, del }) =>
-        state.cube.counts[key].total += put.length - del.length)
+        c.counts[key].total += put.length - del.length)
     }
     rec_counts(c.suppliers, 'supplier')
     rec_counts(c.products, 'product')
@@ -204,63 +217,59 @@ inject('pod', ({ hub, state }) => {
     rec_counts(c.customers, 'customer')
 
     // project data
-    state.cube.supplierbyspend = {}
-    state.cube.customerbyspend = {}
-    state.cube.productbyunits = {}
-    state.cube.countrybyspendposition = {}
+    c.supplierbyspend = {}
+    c.customerbyspend = {}
+    c.productbyunits = {}
+    c.countrybyspendposition = {}
     c.orderitems.on('selection changed', ({ put, del }) => {
       for (const o of put) {
         const spend = o.UnitPrice * o.Quantity
         for (const id of c.supplier_byproduct.lookup(o.ProductId)) {
-          pathie.assign(state.cube.supplierbyspend,
+          pathie.assign(c.supplierbyspend,
             [id], c => (c || 0) + spend)
-          pathie.assign(state.cube.countrybyspendposition,
+          pathie.assign(c.countrybyspendposition,
             [c.suppliers.id2d(id).Country], c => (c || 0) + spend)
         }
-        for (const id of c.order_byorderitem.lookup(o.OrderId)) {
-          pathie.assign(state.cube.customerbyspend,
-            [c.orders.id2d(id).CustomerId], c => (c || 0) + spend)
-          pathie.assign(state.cube.countrybyspendposition,
-            [c.customers.id2d(c.orders.id2d(id).CustomerId).Country],
-              c => (c || 0) - spend)
-        }
-        pathie.assign(state.cube.productbyunits,
+        pathie.assign(c.customerbyspend,
+          [c.orders.id2d(o.OrderId).CustomerId], c => (c || 0) + spend)
+        pathie.assign(c.countrybyspendposition,
+          [c.customers.id2d(c.orders.id2d(o.OrderId).CustomerId).Country],
+            c => (c || 0) - spend)
+        pathie.assign(c.productbyunits,
           [o.ProductId], c => (c || 0) + o.Quantity)
       }
       for (const o of del) {
         const spend = o.UnitPrice * o.Quantity
         for (const id of c.supplier_byproduct.lookup(o.ProductId)) {
-          pathie.assign(state.cube.supplierbyspend,
+          pathie.assign(c.supplierbyspend,
             [id], c => (c || 0) - spend)
-          pathie.assign(state.cube.countrybyspendposition,
+          pathie.assign(c.countrybyspendposition,
             [c.suppliers.id2d(id).Country], c => (c || 0) - spend)
         }
-        for (const id of c.order_byorderitem.lookup(o.OrderId)) {
-          pathie.assign(state.cube.customerbyspend,
-            [c.orders.id2d(id).CustomerId], c => (c || 0) - spend)
-          pathie.assign(state.cube.countrybyspendposition,
-            [c.customers.id2d(c.orders.id2d(id).CustomerId).Country],
-              c => (c || 0) + spend)
-        }
-        pathie.assign(state.cube.productbyunits,
+        pathie.assign(c.customerbyspend,
+          [c.orders.id2d(o.OrderId).CustomerId], c => (c || 0) - spend)
+        pathie.assign(c.countrybyspendposition,
+          [c.customers.id2d(c.orders.id2d(o.OrderId).CustomerId).Country],
+            c => (c || 0) + spend)
+        pathie.assign(c.productbyunits,
           [o.ProductId], c => (c || 0) - o.Quantity)
       }
     })
 
-    state.cube.countrybysuppliercount = {}
+    c.countrybysuppliercount = {}
     c.suppliers.on('selection changed', ({ put, del }) => {
-      for (const s of put) pathie.assign(state.cube.countrybysuppliercount,
+      for (const s of put) pathie.assign(c.countrybysuppliercount,
         [s.Country], c => (c || 0) + 1)
-      for (const s of del) pathie.assign(state.cube.countrybysuppliercount,
+      for (const s of del) pathie.assign(c.countrybysuppliercount,
         [s.Country], c => (c || 0) - 1)
     })
 
-    state.cube.countrybycustomercount = {}
+    c.countrybycustomercount = {}
     c.customers.on('selection changed', ({ put, del }) => {
-      for (const c of put) pathie.assign(state.cube.countrybycustomercount,
-        [c.Country], c => (c || 0) + 1)
-      for (const c of del) pathie.assign(state.cube.countrybycustomercount,
-        [c.Country], c => (c || 0) - 1)
+      for (const u of put) pathie.assign(c.countrybycustomercount,
+        [u.Country], c => (c || 0) + 1)
+      for (const u of del) pathie.assign(c.countrybycustomercount,
+        [u.Country], c => (c || 0) - 1)
     })
 
     const orderitems_indicies = await c.orderitems.batch({ put: data.OrderItems })

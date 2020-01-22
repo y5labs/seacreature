@@ -1,5 +1,6 @@
 import component from '../lib/component'
 import objstats from 'seacreature/lib/objstats'
+import numeral from 'numeral'
 
 export default component({
   name: 'dasboard',
@@ -32,6 +33,10 @@ export default component({
     const clearproductbyid = e => {
       e.preventDefault()
       hub.emit('filter product by id', null)
+    }
+    const clearorderitembyid = e => {
+      e.preventDefault()
+      hub.emit('filter orderitem by id', null)
     }
     const countrybyspendposition = objstats(state.cube.countrybyspendposition)
     return h('div', [
@@ -83,7 +88,7 @@ export default component({
           h('small', `${state.cube.counts.supplier.selected}/${state.cube.counts.supplier.total}`)
         ]),
         state.filters.supplierbyid
-          ? h('a', { on: { click: clearsupplierbyid }, attrs: { href: '#' } }, `Clear ${state.cube.supplier_id2d(state.filters.supplierbyid).CompanyName}`)
+          ? h('a', { on: { click: clearsupplierbyid }, attrs: { href: '#' } }, `Clear ${state.cube.supplier_desc(state.filters.supplierbyid)}`)
           : [],
         h('ul', supplierbyspend.rows.map(s => {
           const click = e => {
@@ -92,7 +97,7 @@ export default component({
           }
           if (s.value < 0.1) return []
           return h('li', [ h('a', { on: { click }, attrs: { href: '#' } },
-            `${state.cube.supplier_id2d(s.key).CompanyName}: $${s.value.toFixed(0)}`)])
+            `${state.cube.supplier_desc(s.key)}: ${numeral(s.value).format('$0,0')}`)])
         }))
       ]),
       h('div.box', [
@@ -101,7 +106,7 @@ export default component({
           h('small', `${state.cube.counts.customer.selected}/${state.cube.counts.customer.total}`)
         ]),
         state.filters.customerbyid
-          ? h('a', { on: { click: clearcustomerbyid }, attrs: { href: '#' } }, `Clear ${state.cube.customer_id2d(state.filters.customerbyid).FirstName} ${state.cube.customer_id2d(state.filters.customerbyid).LastName}`)
+          ? h('a', { on: { click: clearcustomerbyid }, attrs: { href: '#' } }, `Clear ${state.cube.customer_desc(state.filters.customerbyid)}`)
           : [],
         h('ul', customerbyspend.rows.map(s => {
           const click = e => {
@@ -110,7 +115,7 @@ export default component({
           }
           if (s.value < 0.1) return []
           return h('li', [ h('a', { on: { click }, attrs: { href: '#' } },
-            `${state.cube.customer_id2d(s.key).FirstName} ${state.cube.customer_id2d(s.key).LastName}: $${s.value.toFixed(0)}`)])
+            `${state.cube.customer_desc(s.key)}: ${numeral(s.value).format('$0,0')}`)])
         }))
       ]),
       h('div.box', [
@@ -119,7 +124,7 @@ export default component({
           h('small', `${state.cube.counts.product.selected}/${state.cube.counts.product.total}`)
         ]),
         state.filters.productbyid
-          ? h('a', { on: { click: clearproductbyid }, attrs: { href: '#' } }, `Clear ${state.cube.product_id2d(state.filters.productbyid).ProductName}`)
+          ? h('a', { on: { click: clearproductbyid }, attrs: { href: '#' } }, `Clear ${state.cube.product_desc(state.filters.productbyid)}`)
           : [],
         h('ul', productbyunits.rows.map(s => {
           const click = e => {
@@ -128,14 +133,31 @@ export default component({
           }
           if (s.value == 0) return []
           return h('li', [ h('a', { on: { click }, attrs: { href: '#' } },
-            `${state.cube.product_id2d(s.key).ProductName}: ${s.value}`)])
+            `${state.cube.product_desc(s.key)}: ${s.value}`)])
         }))
       ]),
       h('div.box', [
         h('h2', 'Countries by spend position '),
         h('ul', countrybyspendposition.rows.map(s => {
           if (s.value < 0.1 && s.value > -0.1) return []
-          return h('li', `${s.key}: $${s.value.toFixed(0)}`)
+          return h('li', `${s.key}: ${numeral(s.value).format('$0,0')}`)
+        }))
+      ]),
+      h('div.box', [
+        h('h2', [
+          'Order Items by price ',
+          h('small', `${state.cube.counts.orderitem.selected}/${state.cube.counts.orderitem.total}`)
+        ]),
+        state.filters.orderitembyid
+          ? h('a', { on: { click: clearorderitembyid }, attrs: { href: '#' } }, `Clear ${state.cube.orderitem_desc(state.filters.orderitembyid)}`)
+          : [],
+        h('ul', Array.from(state.cube.orderitem_byprice.filtered(-100), s => {
+          const click = e => {
+            e.preventDefault()
+            hub.emit('filter orderitem by id', s[1].Id)
+          }
+          return h('li', [ h('a', { on: { click }, attrs: { href: '#' } },
+            `${state.cube.orderitem_desc(s[1].Id)}: ${numeral(s[0]).format('$0,0')}`)])
         }))
       ])
     ])
