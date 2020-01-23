@@ -94,7 +94,6 @@ module.exports = (identity) => {
     //   identity.toString()
     // )
     await hub.emit('selection changed', { bitindex, ...changes })
-    await hub.emit('update projection', { bitindex, ...changes })
     await hub.emit('update link selection', { bitindex, ...changes })
   }
 

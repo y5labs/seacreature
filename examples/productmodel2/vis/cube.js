@@ -258,7 +258,7 @@ inject('pod', ({ hub, state }) => {
     c.productbyunits = {}
     c.countrybyspendposition = {}
 
-    const propagate = (cube, backwards, forwards, fn) => {
+    const propagate = (cube, forwards, backwards, fn) => {
       const payload = Array(backwards.length + 1 + forwards.length)
       const backward = (i, fn) => {
         if (i >= backwards.length) return forward(0, fn)
@@ -274,41 +274,75 @@ inject('pod', ({ hub, state }) => {
           forward(i + 1, fn)
         }
       }
-      cube.on(backwards.length > 0 ? 'update projection' : 'selection changed', ({ put, del }) => {
-        for (const d of del) {
-          payload[backwards.length] = cube.identity(d)
-          backward(0, pipe => fn(false, pipe))
-        }
+      cube.on('selection changed', ({ put }) => {
         for (const d of put) {
           payload[backwards.length] = cube.identity(d)
-          backward(0, pipe => fn(true, pipe))
+          backward(0, pipe => fn(pipe))
         }
       })
     }
 
-    propagate(c.orderitems, [], [c.product_byorderitem, c.supplier_byproduct], (isput, pipe) => {
-      console.log('orderitems', isput, pipe)
-    })
-    propagate(c.products, [c.orderitem_byproduct], [c.supplier_byproduct], (isput, pipe) => {
-      console.log('products', isput, pipe)
-    })
-    propagate(c.suppliers, [c.product_bysupplier, c.orderitem_byproduct], [], (isput, pipe) => {
-      console.log('suppliers', isput, pipe)
-    })
 
-    // const projection = (cube, pipeline, fn) => {
-    //   cube.on('selection changed', ({ put, del }) => {
-    //     const payload = Array(pipeline.length)
-    //   })
-    // }
+    const projection = (cubes, forwards, backwards, fn) => {
+      const indexbykey = new Map()
+      const indexbycube = Array(cubes.length).fill(new Map())
+      const pending = { put: [], del: [] }
 
-    // projection(
-    //   c.orderitems, [
-    //     [c.products, c.product_byorderitem, c.orderitem_byproduct],
-    //     [c.suppliers, c.supplier_byproduct, c.product_bysupplier]
-    //   ], ({ put, del }, proj) => {
-    //     console.log(`*** ${put.length.toString().padStart(3, ' ')}+ ${del.length.toString().padStart(3, ' ')}-`)
-    //   })
+      cubes.forEach((cube, index) => {
+        propagate(
+          cube,
+          forwards.slice(index, forwards.length),
+          backwards.slice(backwards.length - index, backwards.length),
+          pipe => {
+            pipe = pipe.slice()
+            const hash = JSON.stringify(pipe)
+            if (indexbykey.has(hash)) return
+            indexbykey.set(hash, pipe)
+            pipe.forEach((id, index) => {
+              if (!indexbycube[index].has(id))
+                indexbycube[index].set(id, new Set())
+              indexbycube[index].get(id).add(hash)
+            })
+            pending.put.push(pipe)
+          })
+        cube.on('selection changed', ({ del }) => {
+          for (const d of del) {
+            const id = cube.identity(d)
+            if (indexbycube[index].has(id)) {
+              for (const hash of indexbycube[index].get(id).keys()) {
+                const pipe = indexbykey.get(hash)
+                indexbykey.delete(hash)
+                pending.del.push(pipe)
+                pipe.forEach((id, index) =>
+                  indexbycube[index].get(id).delete(hash))
+              }
+            }
+          }
+        })
+      })
+
+      return () => {
+        fn(pending)
+        pending.put = []
+        pending.del = []
+      }
+    }
+
+    const supplierbyspend = {}
+    const proj = projection(
+      [c.orderitems, c.products, c.suppliers],
+      [c.product_byorderitem, c.supplier_byproduct],
+      [c.product_bysupplier, c.orderitem_byproduct],
+      ({ put, del }) => {
+        for (const [ orderitemid, productid, supplierid ] of put) {
+          const orderitem = c.orderitems.id2d(orderitemid)
+          pathie.assign(supplierbyspend, [supplierid], c => (c || 0) + orderitem.UnitPrice * orderitem.Quantity)
+        }
+        for (const [ orderitemid, productid, supplierid ] of del) {
+          const orderitem = c.orderitems.id2d(orderitemid)
+          pathie.assign(supplierbyspend, [supplierid], c => (c || 0) - orderitem.UnitPrice * orderitem.Quantity)
+        }
+      })
 
     c.orderitems.on('selection changed', ({ put, del }) => {
       for (const o of put) {
@@ -372,5 +406,9 @@ inject('pod', ({ hub, state }) => {
     await c.customers.batch_calculate_selection_change(customers_indicies)
     await c.orders.batch_calculate_selection_change(orders_indicies)
     await c.orderitems.batch_calculate_selection_change(orderitems_indicies)
+
+    proj()
+    console.log(c.supplierbyspend)
+    console.log(supplierbyspend)
   })
 })

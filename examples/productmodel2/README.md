@@ -1,5 +1,9 @@
 # Product Model
 
+del - find all of that index and remove
+put - add to the index ignoring duplicates
+
+
 Bug:
 1. Filter by top OrderItem (60 ✕ Côte de Blaye @ 26350: $1581000)
 2. Filter by Product (Côte de Blaye)
