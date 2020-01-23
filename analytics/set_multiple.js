@@ -49,7 +49,7 @@ module.exports = (cube, map) => {
       del: Array.from(indexdiff.del)
     })
   }
-  api.lookup = (key) =>
+  api.lookup = key =>
     !_set.has(key) ? []
     : Array.from(
       _set.get(key).keys(),

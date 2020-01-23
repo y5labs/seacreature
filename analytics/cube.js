@@ -53,6 +53,7 @@ const visit_links = (target, fn) => {
 module.exports = (identity) => {
   const hub = Hub()
   const data = new Map()
+  const lookup = new Map()
   const index = new SparseArray()
   const filterbits = new BitArray()
 
@@ -65,6 +66,8 @@ module.exports = (identity) => {
   const i2d = i => data.get(index.get(i))
   const i2id = i => index.get(i)
   const id2d = id => data.get(id)
+  const id2i = id => lookup.get(id)
+  const isselected = id => filterbits.zero(id2i(id))
 
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
@@ -91,12 +94,16 @@ module.exports = (identity) => {
     //   identity.toString()
     // )
     await hub.emit('selection changed', { bitindex, ...changes })
+    await hub.emit('update projection', { bitindex, ...changes })
+    await hub.emit('update link selection', { bitindex, ...changes })
   }
 
   const api = {
     i2d,
     i2id,
     id2d,
+    id2i,
+    isselected,
     identity,
     on: (...args) => hub.on(...args),
     length: () => index.length(),
@@ -151,7 +158,7 @@ module.exports = (identity) => {
         let count = 0
         hub.on('batch', ({ put, del }) =>
           total += put.length - del.length)
-        hub.on('selection changed', async params => {
+        hub.on('update link selection', async params => {
           count += params.put.length - params.del.length
           // link cubes together with a shared mutex
           if (!api.mutex) {
@@ -215,10 +222,12 @@ module.exports = (identity) => {
     },
     batch_calculate_selection_change: async ({ put, del }) => {
       if (put.length == 0 && del.length == 0) return
-      await hub.emit('selection changed', {
+      const changes = {
         put: put.filter(p => filterbits.zero(p[0])).map(p => p[1]),
         del: del.map(d => d[1])
-      })
+      }
+      await hub.emit('selection changed', changes)
+      await hub.emit('update link selection', changes)
     },
     batch: async ({ put = [], del = [] }) => {
       const del_ids = []
@@ -237,8 +246,14 @@ module.exports = (identity) => {
       }
       const indicies = index.batch({ put: put_ids, del: del_ids })
       const result = {
-        put: indicies.put.map(i => [i, i2d(i)]),
-        del: indicies.del.map((i, index) => [i, del[index]])
+        put: indicies.put.map(i => {
+          lookup.set(i2id(i), i)
+          return [i, i2d(i)]
+        }),
+        del: indicies.del.map((i, index) => {
+          lookup.delete(i2id(i))
+          return [i, del[index]]
+        })
       }
       filterbits.lengthen(index.length())
       for (const i of indicies.put) filterbits.clear(i)

@@ -10,7 +10,20 @@ const numeral = require('numeral')
 let c = null
 
 inject('pod', ({ hub, state }) => {
+  hub.on('clear cube diff', () => {
+    c.diff = {
+      supplier: { put: 0, del: 0 },
+      product: { put: 0, del: 0 },
+      order: { put: 0, del: 0 },
+      orderitem: { put: 0, del: 0 },
+      customer: { put: 0, del: 0 }
+    }
+  })
+  hub.on('print cube diff', () => {
+    console.log(Object.keys(c.diff).map(k => `   ${k[0]} ${c.diff[k].put.toString().padStart(3, ' ')}+ ${c.diff[k].del.toString().padStart(3, ' ')}-`).join(''))
+  })
   hub.on('filter supplier by country', async country => {
+    await hub.emit('clear cube diff')
     if (country) {
       await c.supplier_country.hidenulls()
       await c.supplier_country.selectnone()
@@ -22,9 +35,11 @@ inject('pod', ({ hub, state }) => {
       await c.supplier_country.selectall()
       delete state.filters.supplierbycountry
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('filter customer by country', async country => {
+    await hub.emit('clear cube diff')
     if (country) {
       await c.customer_country.hidenulls()
       await c.customer_country.selectnone()
@@ -36,9 +51,11 @@ inject('pod', ({ hub, state }) => {
       await c.customer_country.selectall()
       delete state.filters.customerbycountry
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('filter supplier by id', async name => {
+    await hub.emit('clear cube diff')
     if (name) {
       await c.supplier_byid(name)
       state.filters.supplierbyid = name
@@ -47,9 +64,11 @@ inject('pod', ({ hub, state }) => {
       await c.supplier_byid(name)
       delete state.filters.supplierbyid
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('filter customer by id', async id => {
+    await hub.emit('clear cube diff')
     if (id) {
       await c.customer_byid(id)
       state.filters.customerbyid = id
@@ -58,9 +77,11 @@ inject('pod', ({ hub, state }) => {
       await c.customer_byid(id)
       delete state.filters.customerbyid
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('filter product by id', async id => {
+    await hub.emit('clear cube diff')
     if (id) {
       await c.product_byid(id)
       state.filters.productbyid = id
@@ -69,9 +90,11 @@ inject('pod', ({ hub, state }) => {
       await c.product_byid(id)
       delete state.filters.productbyid
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('filter order by id', async id => {
+    await hub.emit('clear cube diff')
     if (id) {
       await c.order_byid(id)
       state.filters.orderbyid = id
@@ -80,9 +103,11 @@ inject('pod', ({ hub, state }) => {
       await c.order_byid(id)
       delete state.filters.orderbyid
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('filter orderitem by id', async id => {
+    await hub.emit('clear cube diff')
     if (id) {
       await c.orderitem_byid(id)
       state.filters.orderitembyid = id
@@ -91,6 +116,7 @@ inject('pod', ({ hub, state }) => {
       await c.orderitem_byid(id)
       delete state.filters.orderitembyid
     }
+    await hub.emit('print cube diff')
     await hub.emit('update')
   })
   hub.on('load cube', async () => {
@@ -204,9 +230,19 @@ inject('pod', ({ hub, state }) => {
       orderitem: { selected: 0, total: 0 },
       customer: { selected: 0, total: 0 }
     }
+    c.diff = {
+      supplier: { put: 0, del: 0 },
+      product: { put: 0, del: 0 },
+      order: { put: 0, del: 0 },
+      orderitem: { put: 0, del: 0 },
+      customer: { put: 0, del: 0 }
+    }
     const rec_counts = (cube, key) => {
-      cube.on('selection changed', ({ put, del }) =>
-        c.counts[key].selected += put.length - del.length)
+      cube.on('selection changed', ({ put, del }) => {
+        c.diff[key].put += put.length
+        c.diff[key].del += del.length
+        c.counts[key].selected += put.length - del.length
+      })
       cube.on('batch', ({ put, del }) =>
         c.counts[key].total += put.length - del.length)
     }
@@ -221,6 +257,59 @@ inject('pod', ({ hub, state }) => {
     c.customerbyspend = {}
     c.productbyunits = {}
     c.countrybyspendposition = {}
+
+    const propagate = (cube, backwards, forwards, fn) => {
+      const payload = Array(backwards.length + 1 + forwards.length)
+      const backward = (i, fn) => {
+        if (i >= backwards.length) return forward(0, fn)
+        for (const id of backwards[i].lookup(payload[backwards.length - i])) {
+          payload[backwards.length - i - 1] = id
+          backward(i + 1, fn)
+        }
+      }
+      const forward = (i, fn) => {
+        if (i >= forwards.length) return fn(payload)
+        for (const id of forwards[i].lookup(payload[backwards.length + i])) {
+          payload[backwards.length + i + 1] = id
+          forward(i + 1, fn)
+        }
+      }
+      cube.on(backwards.length > 0 ? 'update projection' : 'selection changed', ({ put, del }) => {
+        for (const d of del) {
+          payload[backwards.length] = cube.identity(d)
+          backward(0, pipe => fn(false, pipe))
+        }
+        for (const d of put) {
+          payload[backwards.length] = cube.identity(d)
+          backward(0, pipe => fn(true, pipe))
+        }
+      })
+    }
+
+    propagate(c.orderitems, [], [c.product_byorderitem, c.supplier_byproduct], (isput, pipe) => {
+      console.log('orderitems', isput, pipe)
+    })
+    propagate(c.products, [c.orderitem_byproduct], [c.supplier_byproduct], (isput, pipe) => {
+      console.log('products', isput, pipe)
+    })
+    propagate(c.suppliers, [c.product_bysupplier, c.orderitem_byproduct], [], (isput, pipe) => {
+      console.log('suppliers', isput, pipe)
+    })
+
+    // const projection = (cube, pipeline, fn) => {
+    //   cube.on('selection changed', ({ put, del }) => {
+    //     const payload = Array(pipeline.length)
+    //   })
+    // }
+
+    // projection(
+    //   c.orderitems, [
+    //     [c.products, c.product_byorderitem, c.orderitem_byproduct],
+    //     [c.suppliers, c.supplier_byproduct, c.product_bysupplier]
+    //   ], ({ put, del }, proj) => {
+    //     console.log(`*** ${put.length.toString().padStart(3, ' ')}+ ${del.length.toString().padStart(3, ' ')}-`)
+    //   })
+
     c.orderitems.on('selection changed', ({ put, del }) => {
       for (const o of put) {
         const spend = o.UnitPrice * o.Quantity

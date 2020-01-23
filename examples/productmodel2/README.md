@@ -6,6 +6,14 @@ Bug:
 3. Clear OrderItem filter
 4. All products show
 
+Issue is that intermediate connections for projections that travel through the graph get altered by filters on the intermediate data. Need to calculate diffs as a result. Perhaps a library that helps?
+
+project(orderitems, [ product, supplier ])
+project(orderitems, [ order, customer ])
+
+
+Check mutex? How to stop continual propigation?
+
 - [ ] Matrix (Top Products x Top Customers)
 - [ ] OmniSearch
 - [ ] EnabledFilters
