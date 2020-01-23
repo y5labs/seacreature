@@ -1,6 +1,30 @@
+const propagate = (cube, forwards, backwards, fn) => {
+  const payload = Array(backwards.length + 1 + forwards.length)
+  const backward = (i, fn) => {
+    if (i >= backwards.length) return forward(0, fn)
+    for (const id of backwards[i].lookup(payload[backwards.length - i])) {
+      payload[backwards.length - i - 1] = id
+      backward(i + 1, fn)
+    }
+  }
+  const forward = (i, fn) => {
+    if (i >= forwards.length) return fn(payload)
+    for (const id of forwards[i].lookup(payload[backwards.length + i])) {
+      payload[backwards.length + i + 1] = id
+      forward(i + 1, fn)
+    }
+  }
+  cube.on('selection changed', ({ put }) => {
+    for (const d of put) {
+      payload[backwards.length] = cube.identity(d)
+      backward(0, pipe => fn(pipe))
+    }
+  })
+}
+
 module.exports = (cubes, forwards, backwards, fn) => {
   const indexbykey = new Map()
-  const indexbycube = Array(cubes.length).fill(new Map())
+  const indexbycube = Array(cubes.length).fill(null).map(() => new Map())
   const pending = { put: [], del: [] }
 
   cubes.forEach((cube, index) => {
@@ -23,14 +47,16 @@ module.exports = (cubes, forwards, backwards, fn) => {
     cube.on('selection changed', ({ del }) => {
       for (const d of del) {
         const id = cube.identity(d)
-        if (indexbycube[index].has(id)) {
-          for (const hash of indexbycube[index].get(id).keys()) {
-            const pipe = indexbykey.get(hash)
-            indexbykey.delete(hash)
-            pending.del.push(pipe)
-            pipe.forEach((id, index) =>
-              indexbycube[index].get(id).delete(hash))
-          }
+        if (!indexbycube[index].has(id)) continue
+        for (const hash of indexbycube[index].get(id).keys()) {
+          const pipe = indexbykey.get(hash)
+          indexbykey.delete(hash)
+          pending.del.push(pipe)
+          pipe.forEach((id, index) => {
+            if (!indexbycube[index].has(id)) return
+            indexbycube[index].get(id).delete(hash)
+          })
+          indexbycube[index].delete(id)
         }
       }
     })
