@@ -271,19 +271,20 @@ inject('pod', ({ hub, state }) => {
       [c.order_byorderitem, c.customer_byorder],
       [c.order_bycustomer, c.orderitem_byorder],
       ({ put, del }) => {
+        console.log(`orderitemsintocustomers ${put.length - del.length}`)
         put.forEach(([ orderitemid, orderid, customerid ]) => {
+          const customer = c.customers.id2d(customerid)
           const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.customerbyspend, [customerid], c =>
-            (c || 0) + orderitem.UnitPrice * orderitem.Quantity)
-          pathie.assign(c.countrybyspendposition, [c.customers.id2d(customerid).Country],
-            c => (c || 0) - orderitem.UnitPrice * orderitem.Quantity)
+          const spend = orderitem.UnitPrice * orderitem.Quantity
+          pathie.assign(c.customerbyspend, [customer.Id], c => (c || 0) + spend)
+          pathie.assign(c.countrybyspendposition, [customer.Country], c => (c || 0) - spend)
         })
         del.forEach(([ orderitemid, orderid, customerid ]) => {
+          const customer = c.customers.id2d(customerid)
           const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.customerbyspend, [customerid], c =>
-            (c || 0) - orderitem.UnitPrice * orderitem.Quantity)
-          pathie.assign(c.countrybyspendposition, [c.customers.id2d(customerid).Country],
-            c => (c || 0) + orderitem.UnitPrice * orderitem.Quantity)
+          const spend = orderitem.UnitPrice * orderitem.Quantity
+          pathie.assign(c.customerbyspend, [customer.Id], c => (c || 0) - spend)
+          pathie.assign(c.countrybyspendposition, [customer.Country], c => (c || 0) + spend)
         })
       })
     hub.on('calculate projections', () => orderitemsintocustomers())
@@ -294,19 +295,20 @@ inject('pod', ({ hub, state }) => {
       [c.product_byorderitem, c.supplier_byproduct],
       [c.product_bysupplier, c.orderitem_byproduct],
       ({ put, del }) => {
+        console.log(`orderitemsintosuppliers ${put.length - del.length}`)
         put.forEach(([ orderitemid, productid, supplierid ]) => {
+          const supplier = c.suppliers.id2d(supplierid)
           const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.supplierbyspend, [supplierid], c =>
-            (c || 0) + orderitem.UnitPrice * orderitem.Quantity)
-          pathie.assign(c.countrybyspendposition, [c.suppliers.id2d(supplierid).Country],
-            c => (c || 0) + orderitem.UnitPrice * orderitem.Quantity)
+          const spend = orderitem.UnitPrice * orderitem.Quantity
+          pathie.assign(c.supplierbyspend, [supplier.Id], c => (c || 0) + spend)
+          pathie.assign(c.countrybyspendposition, [supplier.Country], c => (c || 0) + spend)
         })
         del.forEach(([ orderitemid, productid, supplierid ]) => {
+          const supplier = c.suppliers.id2d(supplierid)
           const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.supplierbyspend, [supplierid], c =>
-            (c || 0) - orderitem.UnitPrice * orderitem.Quantity)
-          pathie.assign(c.countrybyspendposition, [c.suppliers.id2d(supplierid).Country],
-            c => (c || 0) - orderitem.UnitPrice * orderitem.Quantity)
+          const spend = orderitem.UnitPrice * orderitem.Quantity
+          pathie.assign(c.supplierbyspend, [supplier.Id], c => (c || 0) - spend)
+          pathie.assign(c.countrybyspendposition, [supplier.Country], c => (c || 0) - spend)
         })
       })
     hub.on('calculate projections', () => orderitemsintosuppliers())
@@ -317,33 +319,34 @@ inject('pod', ({ hub, state }) => {
       [c.product_byorderitem],
       [c.orderitem_byproduct],
       ({ put, del }) => {
+        console.log(`productbyunits ${put.length - del.length}`)
         put.forEach(([ orderitemid, productid ]) => {
           const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.productbyunits, [productid], c =>
-            (c || 0) + orderitem.Quantity)
+          pathie.assign(c.productbyunits, [productid],
+            c => (c || 0) + orderitem.Quantity)
         })
         del.forEach(([ orderitemid, productid ]) => {
           const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.productbyunits, [productid], c =>
-            (c || 0) - orderitem.Quantity)
+          pathie.assign(c.productbyunits, [productid],
+            c => (c || 0) - orderitem.Quantity)
         })
       })
     hub.on('calculate projections', () => productbyunits())
 
     c.countrybysuppliercount = {}
     c.suppliers.on('selection changed', ({ put, del }) => {
-      for (const s of put) pathie.assign(c.countrybysuppliercount,
-        [s.Country], c => (c || 0) + 1)
-      for (const s of del) pathie.assign(c.countrybysuppliercount,
-        [s.Country], c => (c || 0) - 1)
+      for (const s of put) pathie.assign(c.countrybysuppliercount, [s.Country],
+        c => (c || 0) + 1)
+      for (const s of del) pathie.assign(c.countrybysuppliercount, [s.Country],
+        c => (c || 0) - 1)
     })
 
     c.countrybycustomercount = {}
     c.customers.on('selection changed', ({ put, del }) => {
-      for (const u of put) pathie.assign(c.countrybycustomercount,
-        [u.Country], c => (c || 0) + 1)
-      for (const u of del) pathie.assign(c.countrybycustomercount,
-        [u.Country], c => (c || 0) - 1)
+      for (const u of put) pathie.assign(c.countrybycustomercount, [u.Country],
+        c => (c || 0) + 1)
+      for (const u of del) pathie.assign(c.countrybycustomercount, [u.Country],
+        c => (c || 0) - 1)
     })
 
     const orderitems_indicies = await c.orderitems.batch({ put: data.OrderItems })
