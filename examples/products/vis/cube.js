@@ -302,6 +302,24 @@ inject('pod', ({ hub, state }) => {
       })
     hub.on('calculate projections', () => productbyunits())
 
+    // matrix view?
+    // c.productsbycustomer = {}
+    // const productsintocustomers = Projection(
+    //   [c.products, c.orderitems, c.orders, c.customers],
+    //   [c.orderitem_byproduct, c.order_byorderitem, c.customer_byorder],
+    //   [c.order_bycustomer, c.orderitem_byorder, c.product_byorderitem],
+    //   ({ put, del }) => {
+    //     del.forEach(([ productid, orderitemid, orderid, customerid ]) => {
+    //       const quantity = c.orderitems.id2d(orderitemid).Quantity
+    //       pathie.assign(c.productsbycustomer, [customerid, productid], c => (c || 0) - quantity)
+    //     })
+    //     put.forEach(([ productid, orderitemid, orderid, customerid ]) => {
+    //       const quantity = c.orderitems.id2d(orderitemid).Quantity
+    //       pathie.assign(c.productsbycustomer, [customerid, productid], c => (c || 0) + quantity)
+    //     })
+    //   })
+    // hub.on('calculate projections', () => productsintocustomers())
+
     c.countrybysuppliercount = {}
     c.suppliers.on('selection changed', ({ put, del }) => {
       for (const s of put) pathie.assign(c.countrybysuppliercount, [s.Country],
@@ -330,6 +348,6 @@ inject('pod', ({ hub, state }) => {
     await c.orders.batch_calculate_selection_change(orders_indicies)
     await c.orderitems.batch_calculate_selection_change(orderitems_indicies)
 
-    hub.emit('calculate projections')
+    await hub.emit('calculate projections')
   })
 })
