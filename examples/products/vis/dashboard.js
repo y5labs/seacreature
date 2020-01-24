@@ -92,7 +92,12 @@ export default component({
         h('h2', 'Countries by spend position '),
         h('ul', countrybyspendposition.rows
           .filter(s => s.value > 0.1 || s.value < -0.1)
-          .map(s => h('li', `${s.key}: ${numeral(s.value).format('$0,0')}`)))
+          .map(s => {
+            const alt = state.cube.countrybyspendposition2[s.key]
+              ? state.cube.countrybyspendposition2[s.key]
+              : 0
+            return h('li', `${s.key}: ${numeral(s.value).format('$0,0')} ${numeral(alt).format('$0,0')}`)
+          }))
       ]),
       h('div.box', [
         h('h2', [

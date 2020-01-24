@@ -236,6 +236,23 @@ inject('pod', ({ hub, state }) => {
 
     // project data
     c.countrybyspendposition = {}
+    hub.on('calculate projections', () => {
+      c.countrybyspendposition2 = {}
+      for (const orderitem of c.orderitem_byid.filtered(Infinity)) {
+        const orderitemid = orderitem[0]
+        const spend = orderitem[1].UnitPrice * orderitem[1].Quantity
+        for (const orderid of c.order_byorderitem.lookup(orderitemid))
+          for (const customerid of c.customer_byorder.lookup(orderid)) {
+            const customer = c.customers.id2d(customerid)
+            pathie.assign(c.countrybyspendposition2, [customer.Country], c => (c || 0) - spend)
+          }
+        for (const productid of c.product_byorderitem.lookup(orderitemid))
+          for (const supplierid of c.supplier_byproduct.lookup(productid)) {
+            const supplier = c.suppliers.id2d(supplierid)
+            pathie.assign(c.countrybyspendposition2, [supplier.Country], c => (c || 0) + spend)
+          }
+      }
+    })
 
     c.customerbyspend = {}
     const orderitemsintocustomers = Projection(

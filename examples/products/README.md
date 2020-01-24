@@ -1,8 +1,9 @@
 # Product Model
 
-Filter countries by USA supplier
--> Position shows USA not making money
--> Console shows diff between precalculated and calculated hasn't filtered USA to only from USA.
+Filter by order item Raclette Courdavault
+Filter by product Raclette Courdavault
+Remove order item filter
+Spend positions do not match
 
 - [ ] Matrix (Top Products x Top Customers)
 - [ ] OmniSearch
