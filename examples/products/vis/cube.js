@@ -11,21 +11,7 @@ const numeral = require('numeral')
 let c = null
 
 inject('pod', ({ hub, state }) => {
-  const supplierbyspend = {}
-  hub.on('clear cube diff', () => {
-    c.diff = {
-      supplier: { put: 0, del: 0 },
-      product: { put: 0, del: 0 },
-      order: { put: 0, del: 0 },
-      orderitem: { put: 0, del: 0 },
-      customer: { put: 0, del: 0 }
-    }
-  })
-  hub.on('print cube diff', () => {
-    console.log(Object.keys(c.diff).map(k => `   ${k[0]} ${c.diff[k].put.toString().padStart(3, ' ')}+ ${c.diff[k].del.toString().padStart(3, ' ')}-`).join(''))
-  })
   hub.on('filter supplier by country', async country => {
-    await hub.emit('clear cube diff')
     if (country) {
       await c.supplier_country.hidenulls()
       await c.supplier_country.selectnone()
@@ -37,12 +23,10 @@ inject('pod', ({ hub, state }) => {
       await c.supplier_country.selectall()
       delete state.filters.supplierbycountry
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
   hub.on('filter customer by country', async country => {
-    await hub.emit('clear cube diff')
     if (country) {
       await c.customer_country.hidenulls()
       await c.customer_country.selectnone()
@@ -54,13 +38,10 @@ inject('pod', ({ hub, state }) => {
       await c.customer_country.selectall()
       delete state.filters.customerbycountry
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
   hub.on('filter supplier by id', async id => {
-    console.log('supplier', id)
-    await hub.emit('clear cube diff')
     if (id) {
       await c.supplier_byid(id)
       state.filters.supplierbyid = id
@@ -69,12 +50,10 @@ inject('pod', ({ hub, state }) => {
       await c.supplier_byid(id)
       delete state.filters.supplierbyid
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
   hub.on('filter customer by id', async id => {
-    await hub.emit('clear cube diff')
     if (id) {
       await c.customer_byid(id)
       state.filters.customerbyid = id
@@ -83,12 +62,10 @@ inject('pod', ({ hub, state }) => {
       await c.customer_byid(id)
       delete state.filters.customerbyid
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
   hub.on('filter product by id', async id => {
-    await hub.emit('clear cube diff')
     if (id) {
       await c.product_byid(id)
       state.filters.productbyid = id
@@ -97,12 +74,10 @@ inject('pod', ({ hub, state }) => {
       await c.product_byid(id)
       delete state.filters.productbyid
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
   hub.on('filter order by id', async id => {
-    await hub.emit('clear cube diff')
     if (id) {
       await c.order_byid(id)
       state.filters.orderbyid = id
@@ -111,12 +86,10 @@ inject('pod', ({ hub, state }) => {
       await c.order_byid(id)
       delete state.filters.orderbyid
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
   hub.on('filter orderitem by id', async id => {
-    await hub.emit('clear cube diff')
     if (id) {
       await c.orderitem_byid(id)
       state.filters.orderitembyid = id
@@ -125,7 +98,6 @@ inject('pod', ({ hub, state }) => {
       await c.orderitem_byid(id)
       delete state.filters.orderitembyid
     }
-    await hub.emit('print cube diff')
     await hub.emit('calculate projections')
     await hub.emit('update')
   })
@@ -300,7 +272,6 @@ inject('pod', ({ hub, state }) => {
           const spend = orderitem.UnitPrice * orderitem.Quantity
           pathie.assign(c.supplierbyspend, [supplier.Id], c => (c || 0) - spend)
           pathie.assign(c.countrybyspendposition, [supplier.Country], c => (c || 0) - spend)
-          pathie.del(c.suppliercountrytrans, [supplier.Country, orderitem.Id])
         })
         put.forEach(([ orderitemid, productid, supplierid ]) => {
           const supplier = c.suppliers.id2d(supplierid)
@@ -308,7 +279,6 @@ inject('pod', ({ hub, state }) => {
           const spend = orderitem.UnitPrice * orderitem.Quantity
           pathie.assign(c.supplierbyspend, [supplier.Id], c => (c || 0) + spend)
           pathie.assign(c.countrybyspendposition, [supplier.Country], c => (c || 0) + spend)
-          pathie.set(c.suppliercountrytrans, [supplier.Country, orderitem.Id], true)
         })
       })
     hub.on('calculate projections', () => orderitemsintosuppliers())
