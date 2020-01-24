@@ -28,28 +28,13 @@ module.exports = (cubes, forwards, backwards, fn) => {
   const pending = { put: [], del: [] }
 
   cubes.forEach((cube, index) => {
-    propagate(
-      cube,
-      forwards.slice(index, forwards.length),
-      backwards.slice(backwards.length - index, backwards.length),
-      pipe => {
-        pipe = pipe.slice()
-        const hash = JSON.stringify(pipe)
-        if (indexbykey.has(hash)) return
-        indexbykey.set(hash, pipe)
-        pipe.forEach((id, index) => {
-          if (!indexbycube[index].has(id))
-            indexbycube[index].set(id, new Set())
-          indexbycube[index].get(id).add(hash)
-        })
-        pending.put.push(pipe)
-      })
     cube.on('selection changed', ({ del }) => {
       for (const d of del) {
         const id = cube.identity(d)
         if (!indexbycube[index].has(id)) continue
         for (const hash of indexbycube[index].get(id).keys()) {
           const pipe = indexbykey.get(hash)
+          // console.log('-', index, pipe)
           indexbykey.delete(hash)
           pipe.forEach((id, index) => {
             if (!indexbycube[index].has(id)) return
@@ -60,6 +45,27 @@ module.exports = (cubes, forwards, backwards, fn) => {
         }
       }
     })
+    propagate(
+      cube,
+      forwards.slice(index, forwards.length),
+      backwards.slice(backwards.length - index, backwards.length),
+      pipe => {
+        for (let i = 0; i < pipe.length; i++) {
+          const cube = cubes[i]
+          if (!cube.filterbits.zero(cube.id2i(pipe[i]))) return
+        }
+        pipe = pipe.slice()
+        // console.log('+', index, pipe)
+        const hash = JSON.stringify(pipe)
+        if (indexbykey.has(hash)) return
+        indexbykey.set(hash, pipe)
+        pipe.forEach((id, index) => {
+          if (!indexbycube[index].has(id))
+            indexbycube[index].set(id, new Set())
+          indexbycube[index].get(id).add(hash)
+        })
+        pending.put.push(pipe)
+      })
   })
 
   return () => {
