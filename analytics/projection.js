@@ -51,12 +51,12 @@ module.exports = (cubes, forwards, backwards, fn) => {
         for (const hash of indexbycube[index].get(id).keys()) {
           const pipe = indexbykey.get(hash)
           indexbykey.delete(hash)
-          pending.del.push(pipe)
           pipe.forEach((id, index) => {
             if (!indexbycube[index].has(id)) return
             indexbycube[index].get(id).delete(hash)
           })
           indexbycube[index].delete(id)
+          pending.del.push(pipe)
         }
       }
     })
