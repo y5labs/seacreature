@@ -7,6 +7,15 @@ export default component({
   module,
   query: ({ hub, props }) => hub.emit('load cube'),
   render: (h, { props, hub, state, route, router }) => {
+    const toarray = obj => Object.keys(obj).map(k => [k, Object.keys(obj[k])]).sort((a, b) =>
+        a[0] > b[0] ? 1
+        : a[0] < b[0] ? -1
+        : 0)
+    console.log(toarray(state.cube.suppliercountrytrans))
+    console.log(toarray(state.cube.suppliercountrytrans2))
+    console.log(toarray(state.cube.customercountrytrans))
+    console.log(toarray(state.cube.customercountrytrans2))
+
     const countrybysuppliercount = objstats(state.cube.countrybysuppliercount)
     const countrybysuppliercountfiltered = countrybysuppliercount.rows.filter(s => s.value != 0)
     const countrybycustomercount = objstats(state.cube.countrybycustomercount)
