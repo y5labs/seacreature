@@ -85,16 +85,21 @@ module.exports = (identity) => {
 
     await hub.emit('filter changed', { bitindex, put, del })
 
-    if (changes.put.length == 0 && changes.del.length == 0)
-      return
-    // console.log(
-    //   '  cube filtered',
-    //   put.length.toString().padStart(5, ' ') + ' ↑',
-    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   identity.toString()
-    // )
-    await hub.emit('selection changed', { bitindex, ...changes })
-    await hub.emit('update link selection', { bitindex, ...changes })
+    if (changes.put.length != 0 || changes.del.length != 0) {
+      // console.log(
+      //   '  cube filtered',
+      //   put.length.toString().padStart(5, ' ') + ' ↑',
+      //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+      //   identity.toString(),
+      //   JSON.stringify(changes)
+      // )
+      await hub.emit('selection changed', { bitindex, ...changes })
+    }
+    await hub.emit('update link selection', {
+      bitindex,
+      put: put.map(i2d),
+      del: del.map(i2d)
+    })
   }
 
   const api = {
@@ -158,6 +163,7 @@ module.exports = (identity) => {
         hub.on('batch', ({ put, del }) =>
           total += put.length - del.length)
         hub.on('update link selection', async params => {
+          // console.log('***', params)
           count += params.put.length - params.del.length
           // link cubes together with a shared mutex
           if (!api.mutex) {

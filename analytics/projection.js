@@ -40,7 +40,7 @@ module.exports = (cubes, forwards, backwards, fn) => {
         if (!indexbycube[index].has(id)) continue
         for (const hash of indexbycube[index].get(id).keys()) {
           const pipe = indexbykey.get(hash)
-          console.log('-', cube.identity.toString(), pipe)
+          // console.log('-', cube.identity.toString(), pipe)
           indexbykey.delete(hash)
           pipe.forEach((id, index) => {
             if (!indexbycube[index].has(id)) return
@@ -57,11 +57,7 @@ module.exports = (cubes, forwards, backwards, fn) => {
       forwards.slice(index, forwards.length),
       backwards.slice(backwards.length - index, backwards.length),
       pipe => {
-        // for (let i = 0; i < pipe.length; i++) {
-        //   const cube = cubes[i]
-        //   if (!cube.filterbits.zero(cube.id2i(pipe[i]))) return
-        // }
-        console.log('+', cubes[index].identity.toString(), pipe)
+        // console.log('+', cubes[index].identity.toString(), pipe)
         pipe = pipe.slice()
         const hash = JSON.stringify(pipe)
         if (indexbykey.has(hash)) return
