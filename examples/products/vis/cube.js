@@ -3,104 +3,12 @@ import papa from 'papaparse'
 import axios from 'axios'
 const { DateTime } = require('luxon')
 const stemmer = require('stemmer')
-const pathie = require('seacreature/lib/pathie')
 const Cube = require('seacreature/analytics/cube')
-const Projection = require('seacreature/analytics/projection')
 const numeral = require('numeral')
 
 let c = null
 
 inject('pod', ({ hub, state }) => {
-  hub.on('filter supplier by country', async country => {
-    if (country) {
-      await c.supplier_country.hidenulls()
-      await c.supplier_country.selectnone()
-      await c.supplier_country({ put: [country] })
-      state.filters.supplierbycountry = country
-    }
-    else {
-      await c.supplier_country.shownulls()
-      await c.supplier_country.selectall()
-      delete state.filters.supplierbycountry
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
-  hub.on('filter customer by country', async country => {
-    if (country) {
-      await c.customer_country.hidenulls()
-      await c.customer_country.selectnone()
-      await c.customer_country({ put: [country] })
-      state.filters.customerbycountry = country
-    }
-    else {
-      await c.customer_country.shownulls()
-      await c.customer_country.selectall()
-      delete state.filters.customerbycountry
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
-  hub.on('filter supplier by id', async id => {
-    if (id) {
-      await c.supplier_byid(id)
-      state.filters.supplierbyid = id
-    }
-    else {
-      await c.supplier_byid(id)
-      delete state.filters.supplierbyid
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
-  hub.on('filter customer by id', async id => {
-    if (id) {
-      await c.customer_byid(id)
-      state.filters.customerbyid = id
-    }
-    else {
-      await c.customer_byid(id)
-      delete state.filters.customerbyid
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
-  hub.on('filter product by id', async id => {
-    if (id) {
-      await c.product_byid(id)
-      state.filters.productbyid = id
-    }
-    else {
-      await c.product_byid(id)
-      delete state.filters.productbyid
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
-  hub.on('filter order by id', async id => {
-    if (id) {
-      await c.order_byid(id)
-      state.filters.orderbyid = id
-    }
-    else {
-      await c.order_byid(id)
-      delete state.filters.orderbyid
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
-  hub.on('filter orderitem by id', async id => {
-    if (id) {
-      await c.orderitem_byid(id)
-      state.filters.orderitembyid = id
-    }
-    else {
-      await c.orderitem_byid(id)
-      delete state.filters.orderitembyid
-    }
-    await hub.emit('calculate projections')
-    await hub.emit('update')
-  })
   hub.on('load cube', async () => {
     if (c) return
     state.cube = c = {}
@@ -186,193 +94,20 @@ inject('pod', ({ hub, state }) => {
     c.orderitems.link_to(c.orders, c.order_byorderitem)
     c.orders.link_to(c.orderitems, c.orderitem_byorder)
 
-    c.product_id2d = c.products.id2d
-    c.order_id2d = c.orders.id2d
-    c.supplier_id2d = c.suppliers.id2d
-    c.orderitem_id2d = c.orderitems.id2d
-    c.customer_id2d = c.customers.id2d
-
-    c.product_desc = id => c.product_id2d(id).ProductName
-    c.supplier_desc = id => c.supplier_id2d(id).CompanyName
+    // helpers
+    c.product_desc = id => c.products.id2d(id).ProductName
+    c.supplier_desc = id => c.suppliers.id2d(id).CompanyName
     c.customer_desc = id => {
-      const customer = c.customer_id2d(id)
+      const customer = c.customers.id2d(id)
       return `${customer.FirstName} ${customer.LastName}`
     }
-    c.order_desc = id => c.order_id2d(id).OrderNumber
+    c.order_desc = id => c.orders.id2d(id).OrderNumber
     c.orderitem_desc = id => {
-      const orderitem = c.orderitem_id2d(id)
-      return `${orderitem.Quantity} ✕ ${c.product_id2d(orderitem.ProductId).ProductName} @ ${numeral(orderitem.UnitPrice).format('$0,0')}`
+      const orderitem = c.orderitems.id2d(id)
+      return `${orderitem.Quantity} ✕ ${c.products.id2d(orderitem.ProductId).ProductName} @ ${numeral(orderitem.UnitPrice).format('$0,0')}`
     }
 
-    // count projections
-    c.counts = {
-      supplier: { selected: 0, total: 0 },
-      product: { selected: 0, total: 0 },
-      order: { selected: 0, total: 0 },
-      orderitem: { selected: 0, total: 0 },
-      customer: { selected: 0, total: 0 }
-    }
-    c.diff = {
-      supplier: { put: 0, del: 0 },
-      product: { put: 0, del: 0 },
-      order: { put: 0, del: 0 },
-      orderitem: { put: 0, del: 0 },
-      customer: { put: 0, del: 0 }
-    }
-    const rec_counts = (cube, key) => {
-      cube.on('selection changed', ({ put, del }) => {
-        c.diff[key].put += put.length
-        c.diff[key].del += del.length
-        c.counts[key].selected += put.length - del.length
-      })
-      cube.on('batch', ({ put, del }) =>
-        c.counts[key].total += put.length - del.length)
-    }
-    rec_counts(c.suppliers, 'supplier')
-    rec_counts(c.products, 'product')
-    rec_counts(c.orders, 'order')
-    rec_counts(c.orderitems, 'orderitem')
-    rec_counts(c.customers, 'customer')
-
-    // project data
-    c.countrybyspendposition = {}
-    hub.on('calculate projections', () => {
-      c.countrybyspendposition2 = {}
-      for (const orderitem of c.orderitem_byid.filtered(Infinity)) {
-        const orderitemid = orderitem[0]
-        const spend = orderitem[1].UnitPrice * orderitem[1].Quantity
-        for (const orderid of c.order_byorderitem.lookup(orderitemid))
-          for (const customerid of c.customer_byorder.lookup(orderid)) {
-            const customer = c.customers.id2d(customerid)
-            pathie.assign(c.countrybyspendposition2, [customer.Country], c => (c || 0) - spend)
-          }
-        for (const productid of c.product_byorderitem.lookup(orderitemid))
-          for (const supplierid of c.supplier_byproduct.lookup(productid)) {
-            const supplier = c.suppliers.id2d(supplierid)
-            pathie.assign(c.countrybyspendposition2, [supplier.Country], c => (c || 0) + spend)
-          }
-      }
-    })
-
-    c.customerbyspend = {}
-    const orderitemsintocustomers = Projection(
-      [c.orderitems, c.orders, c.customers],
-      [c.order_byorderitem, c.customer_byorder],
-      [c.order_bycustomer, c.orderitem_byorder],
-      ({ put, del }) => {
-        del.forEach(([ orderitemid, orderid, customerid ]) => {
-          const customer = c.customers.id2d(customerid)
-          const orderitem = c.orderitems.id2d(orderitemid)
-          const spend = orderitem.UnitPrice * orderitem.Quantity
-          pathie.assign(c.customerbyspend, [customer.Id], c => (c || 0) - spend)
-          pathie.assign(c.countrybyspendposition, [customer.Country], c => (c || 0) + spend)
-        })
-        put.forEach(([ orderitemid, orderid, customerid ]) => {
-          const customer = c.customers.id2d(customerid)
-          const orderitem = c.orderitems.id2d(orderitemid)
-          const spend = orderitem.UnitPrice * orderitem.Quantity
-          pathie.assign(c.customerbyspend, [customer.Id], c => (c || 0) + spend)
-          pathie.assign(c.countrybyspendposition, [customer.Country], c => (c || 0) - spend)
-        })
-      })
-    hub.on('calculate projections', () => orderitemsintocustomers())
-
-    c.supplierbyspend = {}
-    const orderitemsintosuppliers = Projection(
-      [c.orderitems, c.products, c.suppliers],
-      [c.product_byorderitem, c.supplier_byproduct],
-      [c.product_bysupplier, c.orderitem_byproduct],
-      ({ put, del }) => {
-        del.forEach(([ orderitemid, productid, supplierid ]) => {
-          const supplier = c.suppliers.id2d(supplierid)
-          const orderitem = c.orderitems.id2d(orderitemid)
-          const spend = orderitem.UnitPrice * orderitem.Quantity
-          pathie.assign(c.supplierbyspend, [supplier.Id], c => (c || 0) - spend)
-          pathie.assign(c.countrybyspendposition, [supplier.Country], c => (c || 0) - spend)
-        })
-        put.forEach(([ orderitemid, productid, supplierid ]) => {
-          const supplier = c.suppliers.id2d(supplierid)
-          const orderitem = c.orderitems.id2d(orderitemid)
-          const spend = orderitem.UnitPrice * orderitem.Quantity
-          pathie.assign(c.supplierbyspend, [supplier.Id], c => (c || 0) + spend)
-          pathie.assign(c.countrybyspendposition, [supplier.Country], c => (c || 0) + spend)
-        })
-      })
-    hub.on('calculate projections', () => orderitemsintosuppliers())
-
-    c.productbyunits = {}
-    const productbyunits = Projection(
-      [c.orderitems, c.products],
-      [c.product_byorderitem],
-      [c.orderitem_byproduct],
-      ({ put, del }) => {
-        del.forEach(([ orderitemid, productid ]) => {
-          const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.productbyunits, [productid],
-            c => (c || 0) - orderitem.Quantity)
-        })
-        put.forEach(([ orderitemid, productid ]) => {
-          const orderitem = c.orderitems.id2d(orderitemid)
-          pathie.assign(c.productbyunits, [productid],
-            c => (c || 0) + orderitem.Quantity)
-        })
-      })
-    hub.on('calculate projections', () => productbyunits())
-
-    // matrix view?
-    c.productsbycustomer = {}
-    const productsintocustomers = Projection(
-      [c.products, c.orderitems, c.orders, c.customers],
-      [c.orderitem_byproduct, c.order_byorderitem, c.customer_byorder],
-      [c.order_bycustomer, c.orderitem_byorder, c.product_byorderitem],
-      ({ put, del }) => {
-        del.forEach(([ productid, orderitemid, orderid, customerid ]) => {
-          const quantity = c.orderitems.id2d(orderitemid).Quantity
-          pathie.assign(c.productsbycustomer, [customerid, productid], c => (c || 0) - quantity)
-        })
-        put.forEach(([ productid, orderitemid, orderid, customerid ]) => {
-          const quantity = c.orderitems.id2d(orderitemid).Quantity
-          pathie.assign(c.productsbycustomer, [customerid, productid], c => (c || 0) + quantity)
-        })
-      })
-    hub.on('calculate projections', () => productsintocustomers())
-
-    c.countrymovements = {}
-    const suppliersintocustomers = Projection(
-      [c.suppliers, c.products, c.orderitems, c.orders, c.customers],
-      [c.product_bysupplier, c.orderitem_byproduct, c.order_byorderitem, c.customer_byorder],
-      [c.order_bycustomer, c.orderitem_byorder, c.product_byorderitem, c.supplier_byproduct],
-      ({ put, del }) => {
-        del.forEach(([ supplierid, productid, orderitemid, orderid, customerid ]) => {
-          const quantity = c.orderitems.id2d(orderitemid).Quantity
-          const supplier = c.suppliers.id2d(supplierid)
-          const customer = c.customers.id2d(customerid)
-          pathie.assign(c.countrymovements, [supplier.Country, customer.Country], c => (c || 0) - quantity)
-        })
-        put.forEach(([ supplierid, productid, orderitemid, orderid, customerid ]) => {
-          const quantity = c.orderitems.id2d(orderitemid).Quantity
-          const supplier = c.suppliers.id2d(supplierid)
-          const customer = c.customers.id2d(customerid)
-          pathie.assign(c.countrymovements, [supplier.Country, customer.Country], c => (c || 0) + quantity)
-        })
-      })
-    hub.on('calculate projections', () => suppliersintocustomers())
-
-    c.countrybysuppliercount = {}
-    c.suppliers.on('selection changed', ({ put, del }) => {
-      for (const s of put) pathie.assign(c.countrybysuppliercount, [s.Country],
-        c => (c || 0) + 1)
-      for (const s of del) pathie.assign(c.countrybysuppliercount, [s.Country],
-        c => (c || 0) - 1)
-    })
-
-    c.countrybycustomercount = {}
-    c.customers.on('selection changed', ({ put, del }) => {
-      for (const u of put) pathie.assign(c.countrybycustomercount, [u.Country],
-        c => (c || 0) + 1)
-      for (const u of del) pathie.assign(c.countrybycustomercount, [u.Country],
-        c => (c || 0) - 1)
-    })
+    await hub.emit('load projections')
 
     const orderitems_indicies = await c.orderitems.batch({ put: data.OrderItems })
     const orders_indicies = await c.orders.batch({ put: data.Orders })
