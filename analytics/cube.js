@@ -89,8 +89,9 @@ module.exports = identity => {
       filterbits[bitindex.offset][i] |= bitindex.one
     }
     for (const i of put) {
+      if (filterbits.only(i, bitindex.offset, bitindex.one))
+        changes.put.push(i2d(i))
       filterbits[bitindex.offset][i] &= ~bitindex.one
-      if (filterbits.zero(i)) changes.put.push(i2d(i))
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
@@ -105,14 +106,9 @@ module.exports = identity => {
       )
       await hub.emit('selection changed', { bitindex, ...changes })
     }
-    // await hub.emit('update link selection', {
-    //   bitindex,
-    //   ...changes
-    // })
     await hub.emit('update link selection', {
       bitindex,
-      put: put.map(i2d),
-      del: del.map(i2d)
+      ...changes
     })
   }
 
