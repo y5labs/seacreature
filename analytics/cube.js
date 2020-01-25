@@ -97,13 +97,7 @@ module.exports = identity => {
     await hub.emit('filter changed', { bitindex, put, del })
 
     if (changes.put.length != 0 || changes.del.length != 0) {
-      console.log(
-        '  cube filtered',
-        changes.put.length.toString().padStart(5, ' ') + ' ↑',
-        changes.del.length.toString().padStart(5, ' ') + ' ↓   ',
-        print_cube(api),
-        changes
-      )
+      // c
       await hub.emit('selection changed', { bitindex, ...changes })
     }
     await hub.emit('update link selection', {
