@@ -337,6 +337,27 @@ inject('pod', ({ hub, state }) => {
       })
     hub.on('calculate projections', () => productsintocustomers())
 
+    c.countrymovements = {}
+    const suppliersintocustomers = Projection(
+      [c.suppliers, c.products, c.orderitems, c.orders, c.customers],
+      [c.product_bysupplier, c.orderitem_byproduct, c.order_byorderitem, c.customer_byorder],
+      [c.order_bycustomer, c.orderitem_byorder, c.product_byorderitem, c.supplier_byproduct],
+      ({ put, del }) => {
+        del.forEach(([ supplierid, productid, orderitemid, orderid, customerid ]) => {
+          const quantity = c.orderitems.id2d(orderitemid).Quantity
+          const supplier = c.suppliers.id2d(supplierid)
+          const customer = c.customers.id2d(customerid)
+          pathie.assign(c.countrymovements, [supplier.Country, customer.Country], c => (c || 0) - quantity)
+        })
+        put.forEach(([ supplierid, productid, orderitemid, orderid, customerid ]) => {
+          const quantity = c.orderitems.id2d(orderitemid).Quantity
+          const supplier = c.suppliers.id2d(supplierid)
+          const customer = c.customers.id2d(customerid)
+          pathie.assign(c.countrymovements, [supplier.Country, customer.Country], c => (c || 0) + quantity)
+        })
+      })
+    hub.on('calculate projections', () => suppliersintocustomers())
+
     c.countrybysuppliercount = {}
     c.suppliers.on('selection changed', ({ put, del }) => {
       for (const s of put) pathie.assign(c.countrybysuppliercount, [s.Country],

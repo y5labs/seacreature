@@ -129,6 +129,22 @@ export default component({
                 h('td', (pathie.get(state.cube.productsbycustomer, [c.key, p.key]) || 0).toString()))
             ])))
         ])
+      ]),
+      h('div.box', [
+        h('h2', 'Supplier country (x) by customer country (y)'),
+        h('table', [
+          h('thead', [h('tr', [
+            h('th', ''),
+            ...countrybysuppliercountfiltered.map(sc =>
+              h('th', sc.key))
+          ])]),
+          h('tbody', countrybycustomercountfiltered.map(cc =>
+            h('tr', [
+              h('th', cc.key),
+              ...countrybysuppliercountfiltered.map(sc =>
+                h('td', (pathie.get(state.cube.countrymovements, [sc.key, cc.key]) || 0).toString()))
+            ])))
+        ])
       ])
     ])
   }
