@@ -15,12 +15,12 @@ module.exports = (cube, map) => {
 
   const api = async (lo, hi) => {
     if (hi === undefined) hi = lo
-    console.log(
-      ' range_multiple',
-      (lo ? lo.toString() : 'null').padStart(5, ' ') + ' →',
-      (hi ? hi.toString() : 'null').padStart(5, ' ') + ' ←   ',
-      map.toString()
-    )
+    // console.log(
+    //   ' range_multiple',
+    //   (lo ? lo.toString() : 'null').padStart(5, ' ') + ' →',
+    //   (hi ? hi.toString() : 'null').padStart(5, ' ') + ' ←   ',
+    //   map.toString()
+    // )
     const indicies_new = RangeIndex.update(
       _range, filter, indicies, lo, hi)
     const diff = RangeIndex.indicies_diff(
@@ -70,6 +70,7 @@ module.exports = (cube, map) => {
       put: []
     })
   }
+  api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
   api.filtered = function*(n) {
@@ -163,12 +164,12 @@ module.exports = (cube, map) => {
     }
   }
   api.batch = (dataindicies, put, del) => {
-    console.log(
-      ' range_multiple',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      map.toString()
-    )
+    // console.log(
+    //   ' range_multiple',
+    //   put.length.toString().padStart(5, ' ') + ' ↑',
+    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+    //   map.toString()
+    // )
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
     const apply = { put: [], del: [] }

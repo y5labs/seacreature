@@ -62,6 +62,7 @@ module.exports = identity => {
   let haslinkdiff = false
   const forward = new Map()
   const backward = new Map()
+  const link_masks = []
 
   const dimensions = []
 
@@ -74,36 +75,38 @@ module.exports = identity => {
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
 
-    console.log(
-      '  cube filtered',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      print_cube(api),
-      { bitindex, put, del }
-    )
+    // console.log(
+    //   '  cube filtered',
+    //   put.length.toString().padStart(5, ' ') + ' ↑',
+    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+    //   print_cube(api),
+    //   { bitindex, put, del }
+    // )
 
     const changes = { put: [], del: [] }
+    const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
-      if (filterbits.zero(i)) changes.del.push(i2d(i))
       filterbits[bitindex.offset][i] |= bitindex.one
+      if (filterbits.only(i, bitindex.offset, bitindex.one))
+        changes.del.push(i2d(i))
+      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
+        linkchanges.del.push(i)
     }
     for (const i of put) {
       if (filterbits.only(i, bitindex.offset, bitindex.one))
         changes.put.push(i2d(i))
+      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
+        linkchanges.put.push(i)
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
 
     if (changes.put.length != 0 || changes.del.length != 0) {
-      // c
       await hub.emit('selection changed', { bitindex, ...changes })
     }
-    await hub.emit('update link selection', {
-      bitindex,
-      ...changes
-    })
+    await hub.emit('update link selection', { bitindex, put, del })
   }
 
   const api = {
@@ -161,13 +164,16 @@ module.exports = identity => {
     link_to: (target, dimension) => {
       if (forward.has(target))
         throw new Error('Cubes are already linked')
+      while (link_masks.length < dimension.bitindex.offset)
+        link_masks.push(0)
+      link_masks[dimension.bitindex.offset] |= dimension.bitindex.one
       if (!haslinkdiff) {
         let total = 0
         let count = 0
         hub.on('batch', ({ put, del }) =>
           total += put.length - del.length)
         hub.on('update link selection', async params => {
-          console.log(print_cube(api), 'update link selection', params)
+          // console.log(print_cube(api), 'update link selection', params)
           count += params.put.length - params.del.length
           // link cubes together with a shared mutex
           if (!api.mutex) {
@@ -181,25 +187,25 @@ module.exports = identity => {
           }
           if (!api.mutex.islocked) {
             const release = await api.mutex.acquire()
-            console.log(print_cube(api), 'Mutex acquired')
+            // console.log(print_cube(api), 'Mutex acquired')
             visit_links(api, (source, target, link, seen) => {
               if (!link.isenabled()) return
               if (seen) {
-                console.log(print_cube(source), '=>', print_cube(target), 'Deactivating')
+                // console.log(print_cube(source), '=>', print_cube(target), 'Deactivating')
                 link.deactivate()
               }
               else {
-                console.log(print_cube(source), '=>', print_cube(target), 'Activating')
+                // console.log(print_cube(source), '=>', print_cube(target), 'Activating')
                 link.activate()
               }
             })
             await hub.emit('link selection changed', { ...params, total, count })
             visit_links(api, (source, target, link, seen) => {
               if (!link.isenabled()) return
-              console.log(print_cube(source), '=>', print_cube(target), 'Activating')
+              // console.log(print_cube(source), '=>', print_cube(target), 'Activating')
               link.activate()
             })
-            console.log(print_cube(api), 'Mutex released')
+            // console.log(print_cube(api), 'Mutex released')
             release()
           }
           else {
@@ -208,20 +214,20 @@ module.exports = identity => {
         })
         haslinkdiff = true
       }
-      hub.on('link selection changed', async ({ put, del, total, count }) => {
+      hub.on('link selection changed', async ({ bitindex, put, del, total, count }) => {
         if (!isenabled || !isactive) return
-        console.log(
-          '      link_diff',
-          put.length.toString().padStart(5, ' ') + ' ↑',
-          del.length.toString().padStart(5, ' ') + ' ↓   ',
-          `${count}/${total}`,
-          print_cube(api)
-        )
+        // console.log(
+        //   '      link_diff',
+        //   put.length.toString().padStart(5, ' ') + ' ↑',
+        //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+        //   `${count}/${total}`,
+        //   print_cube(api)
+        // )
         if (count == total) await dimension.shownulls()
         else await dimension.hidenulls()
         return dimension({
-          put: put.map(identity),
-          del: del.map(identity)
+          put: put.map(i2id),
+          del: del.map(i2id)
         })
       })
       let isenabled = true

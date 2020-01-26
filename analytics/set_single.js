@@ -11,12 +11,12 @@ module.exports = (cube, map) => {
   const bitindex = cube.filterbits.add()
 
   const api = async ({ put = [], del = [] }) => {
-    console.log(
-      '     set_single',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      map.toString()
-    )
+    // console.log(
+    //   '     set_single',
+    //   put.length.toString().padStart(5, ' ') + ' ↑',
+    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+    //   map.toString()
+    // )
     const indexdiff = { put: new Set(), del: new Set() }
     for (const key of del) {
       if (!_set.has(key) || !filter.has(key)) continue
@@ -59,6 +59,8 @@ module.exports = (cube, map) => {
       put: []
     })
   }
+  api.autoexpand = () => autoexpand
+  api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
   api.selectall = async () => {
@@ -165,12 +167,12 @@ module.exports = (cube, map) => {
     }
   }
   api.batch = (dataindicies, put, del) => {
-    console.log(
-      '     set_single',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      map.toString()
-    )
+    // console.log(
+    //   '     set_single',
+    //   put.length.toString().padStart(5, ' ') + ' ↑',
+    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+    //   map.toString()
+    // )
     const diff = { put: [], del: [] }
     del.forEach((d, i) => {
       const key = map(d)

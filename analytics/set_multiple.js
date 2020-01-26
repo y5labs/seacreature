@@ -13,12 +13,12 @@ module.exports = (cube, map) => {
   const filterindex = new SparseArray()
 
   const api = async ({ put = [], del = [] }) => {
-    console.log(
-      '   set_multiple',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      map.toString()
-    )
+    // console.log(
+    //   '   set_multiple',
+    //   put.length.toString().padStart(5, ' ') + ' ↑',
+    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+    //   map.toString()
+    // )
     if (del.length > 0) autoexpand = false
     const indexdiff = { put: new Set(), del: new Set() }
     for (const key of del) {
@@ -72,6 +72,8 @@ module.exports = (cube, map) => {
       put: []
     })
   }
+  api.autoexpand = () => autoexpand
+  api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
   api.selectall = async () => {
@@ -201,12 +203,12 @@ module.exports = (cube, map) => {
     }
   }
   api.batch = (dataindicies, put, del) => {
-    console.log(
-      '   set_multiple',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      map.toString()
-    )
+    // console.log(
+    //   '   set_multiple',
+    //   put.length.toString().padStart(5, ' ') + ' ↑',
+    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
+    //   map.toString()
+    // )
     const isfiltered = filter.size > 0
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }

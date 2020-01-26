@@ -95,10 +95,32 @@ BitArray.prototype.zeroExcept = function(n, offset, zero) {
       return false
   return true
 }
+// Checks that all bits for the given index are 0 except for a mask
+// Mask is of the same format as the subarrays
+BitArray.prototype.zeroExceptMask = function(n, mask) {
+  for (let i = 0, len = this.subarrays; i < len; ++i)
+    if (mask.length > i) {
+      if (this[i][n] & ~ mask[i]) return false
+    }
+    else if (this[i][n]) return false
+  return true
+}
 // Checks that only the specified bit is set for the given index
 BitArray.prototype.only = function(n, offset, one) {
   for (let i = 0, len = this.subarrays; i < len; ++i)
     if (this[i][n] != (i === offset ? one : 0))
+      return false
+  return true
+}
+// Checks that only the specified bit is set for the given index except for a mask
+// Mask is of the same format as the subarrays
+BitArray.prototype.onlyExceptMask = function(n, offset, one, mask) {
+  for (let i = 0, len = this.subarrays; i < len; ++i)
+    if (mask.length > i) {
+      if ((this[i][n] & ~ mask[i]) != (i === offset ? one : 0))
+        return false
+    }
+    else if (this[i][n] != (i === offset ? one : 0))
       return false
   return true
 }
