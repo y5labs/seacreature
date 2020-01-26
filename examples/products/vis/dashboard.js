@@ -8,16 +8,16 @@ export default component({
   module,
   query: ({ hub, props }) => hub.emit('load cube'),
   render: (h, { props, hub, state, route, router }) => {
-    const countrybysuppliercount = objstats(state.cube.countrybysuppliercount)
-    const countrybysuppliercountfiltered = countrybysuppliercount.rows
-      .filter(s => s.value != 0)
-    const countrybycustomercount = objstats(state.cube.countrybycustomercount)
-    const countrybycustomercountfiltered = countrybycustomercount.rows
-      .filter(s => s.value != 0)
     const emit = (...args) => e => {
       e.preventDefault()
       hub.emit(...args)
     }
+    const countrybysupplierspend = objstats(state.cube.countrybysupplierspend)
+    const countrybysupplierspendfiltered = countrybysupplierspend.rows
+      .filter(s => s.value > 0.1)
+    const countrybycustomerspend = objstats(state.cube.countrybycustomerspend)
+    const countrybycustomerspendfiltered = countrybycustomerspend.rows
+      .filter(s => s.value > 0.1)
     const supplierbyspend = objstats(state.cube.supplierbyspend)
     supplierbyspend.rows = supplierbyspend.rows.filter(s => s.value > 0.1)
     const customerbyspend = objstats(state.cube.customerbyspend)
@@ -30,34 +30,25 @@ export default component({
     return h('div', [
       h('div.box', [
         h('h2', [
-          'Countries by supplier count ',
-          h('small', `${countrybysuppliercountfiltered.length}/${countrybysuppliercount.rows.length}`)
+          'Countries by supplier spend ',
+          h('small', `${countrybysupplierspendfiltered.length}/${countrybysupplierspend.rows.length}`)
         ]),
         state.filters.supplierbycountry
           ? h('a', { on: { click: emit('filter supplier by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.supplierbycountry}`)
           : [],
-        h('ul', countrybysuppliercountfiltered
-          .filter(s => s.value != 0)
-          .map(s => h('li', [ h('a', { on: { click: emit('filter supplier by country', s.key) }, attrs: { href: '#' } },
-              countrybysuppliercount.sum > 0
-                ? `${s.key}: ${(s.value / countrybysuppliercount.sum * 100).toFixed(0)}%`
-                : `${s.key}: 0%`
-            )])))
+        h('ul', countrybysupplierspendfiltered
+          .map(s => h('li', [ h('a', { on: { click: emit('filter supplier by country', s.key) }, attrs: { href: '#' } }, `${s.key}: ${numeral(s.value).format('$0,0')}`)])))
       ]),
       h('div.box', [
         h('h2', [
-          'Countries by customer count ',
-          h('small', `${countrybycustomercountfiltered.length}/${countrybycustomercount.rows.length}`)
+          'Countries by customer spend ',
+          h('small', `${countrybycustomerspendfiltered.length}/${countrybycustomerspend.rows.length}`)
         ]),
         state.filters.customerbycountry
           ? h('a', { on: { click: emit('filter customer by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.customerbycountry}`)
           : [],
-        h('ul', countrybycustomercountfiltered
-          .map(s => h('li', [ h('a', { on: { click: emit('filter customer by country', s.key) }, attrs: { href: '#' } },
-              countrybycustomercount.sum > 0
-                ? `${s.key}: ${(s.value / countrybycustomercount.sum * 100).toFixed(0)}%`
-                : `${s.key}: 0%`
-            )])))
+        h('ul', countrybycustomerspendfiltered
+          .map(s => h('li', [ h('a', { on: { click: emit('filter customer by country', s.key) }, attrs: { href: '#' } }, `${s.key}: ${numeral(s.value).format('$0,0')}`)])))
       ]),
       h('div.box', [
         h('h2', [
@@ -135,13 +126,13 @@ export default component({
         h('table', [
           h('thead', [h('tr', [
             h('th', ''),
-            ...countrybysuppliercountfiltered.map(sc =>
+            ...countrybysupplierspendfiltered.map(sc =>
               h('th', sc.key))
           ])]),
-          h('tbody', countrybycustomercountfiltered.map(cc =>
+          h('tbody', countrybycustomerspendfiltered.map(cc =>
             h('tr', [
               h('th', cc.key),
-              ...countrybysuppliercountfiltered.map(sc =>
+              ...countrybysupplierspendfiltered.map(sc =>
                 h('td', (pathie.get(state.cube.countrymovements, [sc.key, cc.key]) || 0).toString()))
             ])))
         ])
