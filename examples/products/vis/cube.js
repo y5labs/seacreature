@@ -16,7 +16,7 @@ inject('pod', ({ hub, state }) => {
     const data = (await Promise.all(
       ['Customers', 'Orders', 'OrderItems', 'Products', 'Suppliers']
       .map(async name => {
-        const res = await axios.get(`/data/${name}.csv`, 'utf8')
+        const res = await axios.get(`/seacreature/data/${name}.csv`, 'utf8')
         return { name, ...papa.parse(res.data, { header: true }) }
       })))
       .reduce((result, item) => {

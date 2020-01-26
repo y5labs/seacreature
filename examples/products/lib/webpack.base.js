@@ -5,7 +5,7 @@ const path = require('path')
 module.exports = {
   entry: ['./frontend.js'],
   output: {
-    publicPath: '/',
+    publicPath: '/seacreature/',
     path: path.resolve(__dirname, '../../../docs'),
     filename: '[name].[hash].bundle.js'
   },

@@ -5,6 +5,6 @@ const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 module.exports = merge(base, {
   mode: 'production',
   plugins: [
-    new CleanWebpackPlugin()
+    new CleanWebpackPlugin({ cleanOnceBeforeBuildPatterns: ['**/*', '!data', '!data/**/*'] })
   ]
 })
