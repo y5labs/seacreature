@@ -27,6 +27,11 @@ export default component({
     const countrybyspendposition = objstats(state.cube.countrybyspendposition)
     countrybyspendposition.rows = countrybyspendposition.rows
       .filter(s => s.value > 0.1 || s.value < -0.1)
+    const spendpositionmin = -Math.min(countrybyspendposition.min, 0)
+    const spendpositionabs = countrybyspendposition.max + spendpositionmin
+    const spendpositionminratio = spendpositionmin / spendpositionabs
+    const spendpositionmaxratio = (spendpositionabs - spendpositionmin) / spendpositionabs
+
     return h('div', [
       h('div.box', [
         h('h2', [
@@ -37,7 +42,10 @@ export default component({
           ? h('a', { on: { click: emit('filter supplier by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.supplierbycountry}`)
           : [],
         h('ul', countrybysupplierspendfiltered
-          .map(s => h('li', [ h('a', { on: { click: emit('filter supplier by country', s.key) }, attrs: { href: '#' } }, `${s.key}: ${numeral(s.value).format('$0,0')}`)])))
+          .map(s => h('li', [ h('a', { on: { click: emit('filter supplier by country', s.key) }, attrs: { href: '#' } }, [
+            h('span.bar', { style: { width: `${100 * s.value / countrybysupplierspend.max}px` } }),
+            `${s.key}: ${numeral(s.value).format('$0,0')}`
+          ])])))
       ]),
       h('div.box', [
         h('h2', [
@@ -48,7 +56,10 @@ export default component({
           ? h('a', { on: { click: emit('filter customer by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.customerbycountry}`)
           : [],
         h('ul', countrybycustomerspendfiltered
-          .map(s => h('li', [ h('a', { on: { click: emit('filter customer by country', s.key) }, attrs: { href: '#' } }, `${s.key}: ${numeral(s.value).format('$0,0')}`)])))
+          .map(s => h('li', [ h('a', { on: { click: emit('filter customer by country', s.key) }, attrs: { href: '#' } }, [
+            h('span.bar', { style: { width: `${100 * s.value / countrybycustomerspend.max}px` } }),
+            `${s.key}: ${numeral(s.value).format('$0,0')}`
+          ])])))
       ]),
       h('div.box', [
         h('h2', [
@@ -59,7 +70,10 @@ export default component({
           ? h('a', { on: { click: emit('filter supplier by id', null) }, attrs: { href: '#' } }, `Clear ${state.cube.supplier_desc(state.filters.supplierbyid)}`)
           : [],
         h('ul', supplierbyspend.rows
-          .map(s => h('li', [ h('a', { on: { click: emit('filter supplier by id', s.key) }, attrs: { href: '#' } }, `${state.cube.supplier_desc(s.key)}: ${numeral(s.value).format('$0,0')}`)])))
+          .map(s => h('li', [ h('a', { on: { click: emit('filter supplier by id', s.key) }, attrs: { href: '#' } }, [
+            h('span.bar', { style: { width: `${100 * s.value / supplierbyspend.max}px` } }),
+            `${state.cube.supplier_desc(s.key)}: ${numeral(s.value).format('$0,0')}`
+          ])])))
       ]),
       h('div.box', [
         h('h2', [
@@ -70,7 +84,10 @@ export default component({
           ? h('a', { on: { click: emit('filter customer by id', null) }, attrs: { href: '#' } }, `Clear ${state.cube.customer_desc(state.filters.customerbyid)}`)
           : [],
         h('ul', customerbyspend.rows
-          .map(s => h('li', [ h('a', { on: { click: emit('filter customer by id', s.key) }, attrs: { href: '#' } }, `${state.cube.customer_desc(s.key)}: ${numeral(s.value).format('$0,0')}`)])))
+          .map(s => h('li', [ h('a', { on: { click: emit('filter customer by id', s.key) }, attrs: { href: '#' } }, [
+            h('span.bar', { style: { width: `${100 * s.value / customerbyspend.max}px` } }),
+            `${state.cube.customer_desc(s.key)}: ${numeral(s.value).format('$0,0')}`
+          ])])))
       ]),
       h('div.box', [
         h('h2', [
@@ -81,17 +98,26 @@ export default component({
           ? h('a', { on: { click: emit('filter product by id', null) }, attrs: { href: '#' } }, `Clear ${state.cube.product_desc(state.filters.productbyid)}`)
           : [],
         h('ul', productbyunits.rows
-          .map(s => h('li', [ h('a', { on: { click: emit('filter product by id', s.key) }, attrs: { href: '#' } }, `${state.cube.product_desc(s.key)}: ${s.value}`)])))
+          .map(s => h('li', [ h('a', { on: { click: emit('filter product by id', s.key) }, attrs: { href: '#' } }, [
+            h('span.bar', { style: { width: `${100 * s.value / productbyunits.max}px` } }),
+            `${state.cube.product_desc(s.key)}: ${s.value}`
+          ])])))
       ]),
       h('div.box', [
         h('h2', 'Countries by spend position '),
         h('ul', countrybyspendposition.rows
-          .map(s => {
-            const alt = state.cube.countrybyspendposition2[s.key]
-              ? state.cube.countrybyspendposition2[s.key]
-              : 0
-            return h('li', `${s.key}: ${numeral(s.value).format('$0,0')} ${numeral(alt).format('$0,0')}`)
-          }))
+          .map(s => h('li', [
+            s.value < 0
+            ? [
+              h('span.bar.blank', { style: { width: `${100 * (spendpositionmin + s.value) / spendpositionabs}px` } }),
+              h('span.bar.red', { style: { width: `${100 * -s.value / spendpositionabs}px` } })
+            ]
+            : h('span.bar.blank', { style: { width: `${100 * spendpositionminratio}px` } }),
+            s.value > 0
+            ? h('span.bar.green', { style: { width: `${100 * s.value / spendpositionabs}px` } })
+            : null,
+            `${s.key}: ${numeral(s.value).format('$0,0')}`
+          ].flat())))
       ]),
       h('div.box', [
         h('h2', [

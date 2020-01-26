@@ -2,6 +2,7 @@
 
 ## Todo
 
+- [ ] Consider PowerBI's 'highlight' functionality?
 - [ ] Update documentation to include analytics
 - [ ] Update documentation to include persistence
 - [ ] Update documentation to include core
