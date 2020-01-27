@@ -3,8 +3,7 @@ const Hub = require('../lib/hub')
 
 module.exports = (cube, map) => {
   const _set = new Map()
-  let autoexpand = true
-  const filter = new Set()
+  const filter = new Map()
   let shownulls = true
   const nulls = new Set()
 
@@ -19,11 +18,14 @@ module.exports = (cube, map) => {
     //   del.length.toString().padStart(5, ' ') + ' ↓   ',
     //   map.toString()
     // )
-    if (del.length > 0) autoexpand = false
     const indexdiff = { put: new Set(), del: new Set() }
     for (const key of del) {
-      if (!_set.has(key) || !filter.has(key)) continue
-      filter.delete(key)
+      if (!_set.has(key)) continue
+      if (filter.has(key)) {
+        filter.set(key, filter.get(key) + 1)
+        continue
+      }
+      filter.set(key, 1)
       for (const index of _set.get(key).keys()) {
         const current = filterindex.get(index)
         if (current === 1) indexdiff.del.add(index)
@@ -31,8 +33,12 @@ module.exports = (cube, map) => {
       }
     }
     for (const key of put) {
-      if (!_set.has(key) || filter.has(key)) continue
-      filter.add(key)
+      if (!_set.has(key) || !filter.has(key)) continue
+      if (filter.get(key) > 1) {
+        filter.set(key, filter.get(key) - 1)
+        continue
+      }
+      filter.delete(key)
       for (const index of _set.get(key).keys()) {
         const current = filterindex.get(index)
         if (current === 0) {
@@ -72,7 +78,6 @@ module.exports = (cube, map) => {
       put: []
     })
   }
-  api.autoexpand = () => autoexpand
   api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
@@ -83,7 +88,6 @@ module.exports = (cube, map) => {
     //   del.length.toString().padStart(5, ' ') + ' ↓   ',
     //   map.toString()
     // )
-    const isfiltered = filter.size > 0
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
     const apply = { put: [], del: [] }
@@ -93,16 +97,15 @@ module.exports = (cube, map) => {
       if (keys.length == 0) {
         nulls.delete(index)
         if (shownulls) diff.del.push(index)
+        return
       }
-      else {
-        let count = 0
-        for (const key of keys) {
-          if (filter.has(key)) count++
-          apply.del.push([key, index])
-        }
-        if (count > 0) diff.del.push(index)
-        filterindex.set(index, null)
+      let count = 0
+      for (const key of keys) {
+        if (!filter.has(key)) count++
+        apply.del.push([key, index])
       }
+      if (count > 0) diff.del.push(index)
+      filterindex.set(index, null)
     })
     put.forEach((d, i) => {
       const keys = map(d) || []
@@ -110,22 +113,17 @@ module.exports = (cube, map) => {
       if (keys.length == 0) {
         nulls.add(index)
         if (shownulls) diff.put.push(index)
+        return
       }
-      else {
-        let count = 0
-        for (const key of keys) {
-          if (!_set.has(key)) _set.set(key, new Set())
-          _set.get(key).add(index)
-          if (autoexpand) {
-            filter.add(key)
-            count++
-          }
-          else if (filter.has(key)) count++
-          apply.put.push([key, index])
-        }
-        if (count > 0) diff.put.push(index)
-        filterindex.set(index, count)
+      let count = 0
+      for (const key of keys) {
+        if (!_set.has(key)) _set.set(key, new Set())
+        _set.get(key).add(index)
+        if (!filter.has(key)) count++
+        apply.put.push([key, index])
       }
+      if (count > 0) diff.put.push(index)
+      filterindex.set(index, count)
     })
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one

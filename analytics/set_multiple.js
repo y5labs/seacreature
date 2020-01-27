@@ -209,7 +209,6 @@ module.exports = (cube, map) => {
     //   del.length.toString().padStart(5, ' ') + ' ↓   ',
     //   map.toString()
     // )
-    const isfiltered = filter.size > 0
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
     const apply = { put: [], del: [] }
@@ -219,16 +218,15 @@ module.exports = (cube, map) => {
       if (keys.length == 0) {
         nulls.delete(index)
         if (shownulls) diff.del.push(index)
+        return
       }
-      else {
-        let count = 0
-        for (const key of keys) {
-          if (filter.has(key)) count++
-          apply.del.push([key, index])
-        }
-        if (count > 0) diff.del.push(index)
-        filterindex.set(index, null)
+      let count = 0
+      for (const key of keys) {
+        if (filter.has(key)) count++
+        apply.del.push([key, index])
       }
+      if (count > 0) diff.del.push(index)
+      filterindex.set(index, null)
     })
     put.forEach((d, i) => {
       const keys = map(d) || []
@@ -236,23 +234,23 @@ module.exports = (cube, map) => {
       if (keys.length == 0) {
         nulls.add(index)
         if (shownulls) diff.put.push(index)
+        return
       }
-      else {
-        let count = 0
-        for (const key of keys) {
-          if (!_set.has(key)) _set.set(key, new Set())
-          _set.get(key).add(index)
-          if (autoexpand) {
-            filter.add(key)
-            count++
-          }
-          else if (filter.has(key)) count++
-          apply.put.push([key, index])
+      let count = 0
+      for (const key of keys) {
+        if (!_set.has(key)) _set.set(key, new Set())
+        _set.get(key).add(index)
+        if (autoexpand) {
+          filter.add(key)
+          count++
         }
-        if (count > 0) diff.put.push(index)
-        filterindex.set(index, count)
+        else if (filter.has(key)) count++
+        apply.put.push([key, index])
       }
+      if (count > 0) diff.put.push(index)
+      filterindex.set(index, count)
     })
+    // TODO apply to _set
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one
     for (const i of diff.put)

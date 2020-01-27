@@ -2,8 +2,7 @@ const Hub = require('../lib/hub')
 
 module.exports = (cube, map) => {
   const _set = new Map()
-  let autoexpand = true
-  const filter = new Set()
+  const filter = new Map()
   let shownulls = true
   const nulls = new Set()
 
@@ -19,14 +18,22 @@ module.exports = (cube, map) => {
     // )
     const indexdiff = { put: new Set(), del: new Set() }
     for (const key of del) {
-      if (!_set.has(key) || !filter.has(key)) continue
-      filter.delete(key)
+      if (!_set.has(key)) continue
+      if (filter.has(key)) {
+        filter.set(key, filter.get(key) + 1)
+        continue
+      }
+      filter.set(key, 1)
       for (const index of _set.get(key).keys())
         indexdiff.del.add(index)
     }
     for (const key of put) {
-      if (!_set.has(key) || filter.has(key)) continue
-      filter.add(key)
+      if (!_set.has(key) || !filter.has(key)) continue
+      if (filter.get(key) > 1) {
+        filter.set(key, filter.get(key) - 1)
+        continue
+      }
+      filter.delete(key)
       for (const index of _set.get(key).keys())
         indexdiff.put.add(index)
     }
@@ -59,7 +66,6 @@ module.exports = (cube, map) => {
       put: []
     })
   }
-  api.autoexpand = () => autoexpand
   api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
@@ -80,7 +86,7 @@ module.exports = (cube, map) => {
       }
       else {
         _set.get(key).delete(index)
-        if (filter.has(key)) diff.del.push(index)
+        if (!filter.has(key)) diff.del.push(index)
       }
     })
     put.forEach((d, i) => {
@@ -93,12 +99,7 @@ module.exports = (cube, map) => {
       else {
         if (!_set.has(key)) _set.set(key, new Set())
         _set.get(key).add(index)
-        if (autoexpand) {
-          filter.add(key)
-          diff.put.push(index)
-        }
-        else if (filter.has(key))
-          diff.put.push(index)
+        if (!filter.has(key)) diff.put.push(index)
       }
     })
     for (const i of diff.del)
