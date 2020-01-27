@@ -29,8 +29,6 @@ export default component({
       .filter(s => s.value > 0.1 || s.value < -0.1)
     const spendpositionmin = -Math.min(countrybyspendposition.min, 0)
     const spendpositionabs = countrybyspendposition.max + spendpositionmin
-    const spendpositionminratio = spendpositionmin / spendpositionabs
-    const spendpositionmaxratio = (spendpositionabs - spendpositionmin) / spendpositionabs
 
     return h('div', [
       h('div.box', [
@@ -112,7 +110,7 @@ export default component({
               h('span.bar.blank', { style: { width: `${100 * (spendpositionmin + s.value) / spendpositionabs}px` } }),
               h('span.bar.red', { style: { width: `${100 * -s.value / spendpositionabs}px` } })
             ]
-            : h('span.bar.blank', { style: { width: `${100 * spendpositionminratio}px` } }),
+            : h('span.bar.blank', { style: { width: `${100 * spendpositionmin / spendpositionabs}px` } }),
             s.value > 0
             ? h('span.bar.green', { style: { width: `${100 * s.value / spendpositionabs}px` } })
             : null,

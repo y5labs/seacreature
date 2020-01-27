@@ -1,11 +1,15 @@
-# Product Model
+# Product Model Seacreature Example
 
-## Current issue
-1. Select any Order Item
-2. Select Supplier
-3. Clear Order Item filter
-4. Customers are unfiltered (selected all)
+Constraints have a source cube.
+They propagate across the graph.
+They are additive and require a new dimension type that keeps an anti-filter, everything that has been filtered out. This includes a count of the number of times it has been filtered out.
 
-Even when already filtered, making changes to a filter on a cube needs to propagate to other cubes somehow. Need to work out logic. Perhaps some concept of filtered by incoming vs not filtered by internal filters?
+link_multiple
+(based on set_multiple)
+link_single
+(based on set_single)
 
-Solution? Keep a mask of dimensions that are incoming filters. Use this mask to remove them, then see if each item has gone from filtered -> unfiltered or back.
+Change filter Set to filter Map, keep a count of filters.
+Return diff
+
+Important! put and del params may have multiple of the same index.

@@ -1,6 +1,6 @@
-const array8 = (n) => new Uint8Array(n)
-const array16 = (n) => new Uint16Array(n)
-const array32 = (n) => new Uint32Array(n)
+const array8 = n => new Uint8Array(n)
+const array16 = n => new Uint16Array(n)
+const array32 = n => new Uint32Array(n)
 
 const lengthen = (array, length) => {
   if (array.length >= length) return array
@@ -105,6 +105,13 @@ BitArray.prototype.zeroExceptMask = function(n, mask) {
     else if (this[i][n]) return false
   return true
 }
+// Checks that all bits for the given index are 0 within the provided mask
+// Mask is of the same format as the subarrays
+BitArray.prototype.zeroWithinMask = function(n, mask) {
+  for (let i = 0, len = this.subarrays; i < len; ++i)
+    if (mask.length > i && this[i][n] & mask[i]) return false
+  return true
+}
 // Checks that only the specified bit is set for the given index
 BitArray.prototype.only = function(n, offset, one) {
   for (let i = 0, len = this.subarrays; i < len; ++i)
@@ -121,6 +128,14 @@ BitArray.prototype.onlyExceptMask = function(n, offset, one, mask) {
         return false
     }
     else if (this[i][n] != (i === offset ? one : 0))
+      return false
+  return true
+}
+// Checks that only the specified bit is set for the given index within the provided mask
+// Mask is of the same format as the subarrays
+BitArray.prototype.onlyWithinMask = function(n, offset, one, mask) {
+  for (let i = 0, len = this.subarrays; i < len; ++i)
+    if (mask.length > i && (this[i][n] & mask[i]) != (i === offset ? one : 0))
       return false
   return true
 }

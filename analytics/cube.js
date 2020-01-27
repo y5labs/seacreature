@@ -71,6 +71,10 @@ module.exports = identity => {
   const id2d = id => data.get(id)
   const id2i = id => lookup.get(id)
   const isselected = id => filterbits.zero(id2i(id))
+  const islink = bitindex => {
+    if (bitindex.offset >= link_masks.length) return false
+    return link_masks[bitindex.offset] & bitindex.one
+  }
 
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
@@ -84,29 +88,25 @@ module.exports = identity => {
     // )
 
     const changes = { put: [], del: [] }
-    const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
       filterbits[bitindex.offset][i] |= bitindex.one
       if (filterbits.only(i, bitindex.offset, bitindex.one))
         changes.del.push(i2d(i))
-      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
-        linkchanges.del.push(i)
     }
     for (const i of put) {
       if (filterbits.only(i, bitindex.offset, bitindex.one))
         changes.put.push(i2d(i))
-      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
-        linkchanges.put.push(i)
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
 
-    if (changes.put.length != 0 || changes.del.length != 0) {
+    if (changes.put.length > 0 || changes.del.length > 0) {
       await hub.emit('selection changed', { bitindex, ...changes })
+      if (!islink(bitindex))
+        await hub.emit('update link selection', { bitindex, ...linkchanges })
     }
-    await hub.emit('update link selection', { bitindex, put, del })
   }
 
   const api = {
@@ -119,6 +119,7 @@ module.exports = identity => {
     on: (...args) => hub.on(...args),
     length: () => index.length(),
     filterbits,
+    link_masks,
     index,
     forward,
     backward,
@@ -164,9 +165,6 @@ module.exports = identity => {
     link_to: (target, dimension) => {
       if (forward.has(target))
         throw new Error('Cubes are already linked')
-      while (link_masks.length < dimension.bitindex.offset)
-        link_masks.push(0)
-      link_masks[dimension.bitindex.offset] |= dimension.bitindex.one
       if (!haslinkdiff) {
         let total = 0
         let count = 0
@@ -175,6 +173,7 @@ module.exports = identity => {
         hub.on('update link selection', async params => {
           // console.log(print_cube(api), 'update link selection', params)
           count += params.put.length - params.del.length
+          // console.log(print_cube(api), params.put, params.del)
           // link cubes together with a shared mutex
           if (!api.mutex) {
             visit_cubes(api, cube => {
@@ -242,6 +241,10 @@ module.exports = identity => {
       }
       forward.set(target, link_api)
       target.backward.set(api, link_api)
+      while (target.link_masks.length < dimension.bitindex.offset)
+        target.link_masks.push(0)
+      target.link_masks[dimension.bitindex.offset] |= dimension.bitindex.one
+      // console.log(print_cube(target), 'Added mask', dimension.bitindex, target.link_masks)
       return link_api
     },
     batch_calculate_selection_change: async ({ put, del }) => {
