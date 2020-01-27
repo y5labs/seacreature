@@ -1,8 +1,6 @@
 # Product Model Seacreature Example
 
-Constraints have a source cube.
-They propagate across the graph.
-They are additive and require a new dimension type that keeps an anti-filter, everything that has been filtered out. This includes a count of the number of times it has been filtered out.
+Link filters are additive and require a new dimension type that keeps an anti-filter, everything that has been filtered out. This includes a count of the number of times it has been filtered out.
 
 link_multiple
 (based on set_multiple)

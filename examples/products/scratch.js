@@ -21,16 +21,16 @@ const data = {
 
 const suppliers = Cube(s => s.Id)
 const supplier_byid = suppliers.range_single(s => s.Id)
-const supplier_byproduct = suppliers.set_multiple(s => product_bysupplier.lookup(s.Id))
+const supplier_byproduct = suppliers.link_multiple(s => product_bysupplier.lookup(s.Id))
 
 const products = Cube(p => p.Id)
 const product_byid = products.range_single(p => p.Id)
-const product_bysupplier = products.set_single(p => p.SupplierId)
-const product_byorder = products.set_multiple(p => order_byproduct.lookup(p.Id))
+const product_bysupplier = products.link_single(p => p.SupplierId)
+const product_byorder = products.link_multiple(p => order_byproduct.lookup(p.Id))
 
 const orders = Cube(o => o.Id)
 const order_byid = orders.range_single(o => o.Id)
-const order_byproduct = orders.set_single(o => o.ProductId)
+const order_byproduct = orders.link_single(o => o.ProductId)
 
 products.link_to(suppliers, supplier_byproduct)
 suppliers.link_to(products, product_bysupplier)
@@ -56,11 +56,11 @@ console.log('ID PO OP ID SP PS ID')
 const print = msg => {
   console.log(
     bool(order_byid.filter[0] !== null),
-    bool(order_byproduct.filter.size == 1),
-    bool(product_byorder.filter.size == 1),
+    bool(order_byproduct.filter.size),
+    bool(product_byorder.filter.size),
     bool(product_byid.filter[0] !== null),
-    bool(product_bysupplier.filter.size == 1),
-    bool(supplier_byproduct.filter.size == 1),
+    bool(product_bysupplier.filter.size),
+    bool(supplier_byproduct.filter.size),
     bool(supplier_byid.filter[0] !== null),
     // bool(orders.link_filter.get(3)),
     // bool(products.link_filter.get(1)),
