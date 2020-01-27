@@ -12,19 +12,19 @@ const Mutex = require('../lib/mutex')
 
 const print_cube = cube => cube.identity.toString().split(' => ')[0]
 
-const visit_links = (target, fn) => {
+const visit_links = (target, payload, fn) => {
   const seen = new Set()
-  const unseen = new Set()
-  unseen.add(target)
+  const unseen = new Map()
+  unseen.set(target, payload)
   while (unseen.size > 0) {
-    const tosee = Array.from(unseen.values())
+    const tosee = Array.from(unseen.entries())
     unseen.clear()
-    for (const cube of tosee) seen.add(cube)
+    for (const cube of tosee) seen.add(cube[0])
     for (const cube of tosee) {
-      for (const [c, d] of cube.forward.entries()) {
-        fn(cube, c, d, seen.has(c))
+      for (const [c, d] of cube[0].forward.entries()) {
+        const params = fn(cube[0], c, d, cube[1], seen.has(c))
         if (seen.has(c)) continue
-        unseen.add(c)
+        unseen.set(c, params)
       }
     }
   }
@@ -65,24 +65,31 @@ module.exports = identity => {
     // )
 
     const changes = { put: [], del: [] }
+    const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
       filterbits[bitindex.offset][i] |= bitindex.one
-      if (filterbits.only(i, bitindex.offset, bitindex.one))
-        changes.del.push(i2d(i))
+      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
+        const id = i2id(i)
+        linkchanges.del.push(id)
+        changes.del.push(id2d(id))
+      }
     }
     for (const i of put) {
-      if (filterbits.only(i, bitindex.offset, bitindex.one))
-        changes.put.push(i2d(i))
+      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
+        const id = i2id(i)
+        linkchanges.put.push(id)
+        changes.put.push(id2d(id))
+      }
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
 
     if (changes.put.length > 0 || changes.del.length > 0) {
-      await hub.emit('selection changed', { bitindex, ...changes })
+      await hub.emit('selection changed', changes)
       if (!islink(bitindex))
-        await hub.emit('update link selection', { bitindex, ...changes })
+        await hub.emit('update link selection', linkchanges)
     }
   }
 
@@ -154,8 +161,8 @@ module.exports = identity => {
         throw new Error('Cubes are already linked')
       if (!haslinkdiff) {
         hub.on('update link selection', async params => {
-          visit_links(api, (source, target, link, seen) => {
-            
+          visit_links(api, params, (source, target, link, params, seen) => {
+            console.log(print_cube(source), print_cube(target), params)
           })
         })
         haslinkdiff = true
