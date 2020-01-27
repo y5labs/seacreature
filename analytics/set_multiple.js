@@ -211,7 +211,6 @@ module.exports = (cube, map) => {
     // )
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
-    const apply = { put: [], del: [] }
     del.forEach((d, i) => {
       const keys = map(d) || []
       const index = dataindicies.del[i]
@@ -223,7 +222,7 @@ module.exports = (cube, map) => {
       let count = 0
       for (const key of keys) {
         if (filter.has(key)) count++
-        apply.del.push([key, index])
+        _set.get(key).delete(index)
       }
       if (count > 0) diff.del.push(index)
       filterindex.set(index, null)
@@ -245,12 +244,10 @@ module.exports = (cube, map) => {
           count++
         }
         else if (filter.has(key)) count++
-        apply.put.push([key, index])
       }
       if (count > 0) diff.put.push(index)
       filterindex.set(index, count)
     })
-    // TODO apply to _set
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one
     for (const i of diff.put)
