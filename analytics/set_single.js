@@ -180,11 +180,10 @@ module.exports = (cube, map) => {
       if (key == null || key == undefined) {
         nulls.delete(index)
         if (shownulls) diff.del.push(index)
+        return
       }
-      else {
-        _set.get(key).delete(index)
-        if (filter.has(key)) diff.del.push(index)
-      }
+      _set.get(key).delete(index)
+      if (filter.has(key)) diff.del.push(index)
     })
     put.forEach((d, i) => {
       const key = map(d)
@@ -192,17 +191,16 @@ module.exports = (cube, map) => {
       if (key == null || key == undefined) {
         nulls.add(index)
         if (shownulls) diff.put.push(index)
+        return
       }
-      else {
-        if (!_set.has(key)) _set.set(key, new Set())
-        _set.get(key).add(index)
-        if (autoexpand) {
-          filter.add(key)
-          diff.put.push(index)
-        }
-        else if (filter.has(key))
-          diff.put.push(index)
+      if (!_set.has(key)) _set.set(key, new Set())
+      _set.get(key).add(index)
+      if (autoexpand) {
+        filter.add(key)
+        diff.put.push(index)
       }
+      else if (filter.has(key))
+        diff.put.push(index)
     })
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one

@@ -67,29 +67,28 @@ module.exports = identity => {
     const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
+      const id = i2id(i)
       filterbits[bitindex.offset][i] |= bitindex.one
-      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
-        const id = i2id(i)
-        linkchanges.del.push(id)
+      if (filterbits.only(i, bitindex.offset, bitindex.one))
         changes.del.push(id2d(id))
-      }
+      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
+        linkchanges.del.push(id)
     }
     for (const i of put) {
-      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
-        const id = i2id(i)
-        linkchanges.put.push(id)
+      const id = i2id(i)
+      if (filterbits.only(i, bitindex.offset, bitindex.one))
         changes.put.push(id2d(id))
-      }
+      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
+        linkchanges.put.push(id)
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
 
-    if (changes.put.length > 0 || changes.del.length > 0) {
+    if (changes.put.length > 0 || changes.del.length > 0)
       await hub.emit('selection changed', changes)
-      if (!islink(bitindex))
-        await hub.emit('update link selection', linkchanges)
-    }
+    if (linkchanges.put.length > 0 || linkchanges.del.length > 0)
+    await hub.emit('update link selection', linkchanges)
   }
 
   const api = {
@@ -159,6 +158,7 @@ module.exports = identity => {
       if (forward.has(target))
         throw new Error('Cubes are already linked')
       if (!haslinkdiff) {
+        haslinkdiff = true
         hub.on('update link selection', async params => {
           await visit_links(api, params, async (source, target, dimension, params) => {
             await dimension(params)
@@ -166,17 +166,17 @@ module.exports = identity => {
               put: params.put.map(i => dimension.lookup(i)).flat(),
               del: params.del.map(i => dimension.lookup(i)).flat()
             }
-            // console.log(
-            //   print_cube(source),
-            //   '=>',
-            //   print_cube(target),
-            //   params,
-            //   result
-            // )
+            console.log(
+              print_cube(source),
+              '=>',
+              print_cube(target),
+              dimension.map.toString(),
+              params,
+              result
+            )
             return result
           })
         })
-        haslinkdiff = true
       }
       forward.set(target, dimension)
       while (target.link_masks.length < dimension.bitindex.offset)

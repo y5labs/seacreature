@@ -11,34 +11,30 @@ module.exports = (cube, map) => {
   const bitindex = cube.filterbits.add()
   const filterindex = new SparseArray()
 
+  // TODO this is broken
   const api = async ({ put = [], del = [] }) => {
-    // console.log(
-    //   '  link_multiple',
-    //   put.length.toString().padStart(5, ' ') + ' ↑',
-    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   map.toString()
-    // )
+    console.log(
+      '  link_multiple',
+      put.length.toString().padStart(5, ' ') + ' ↑',
+      del.length.toString().padStart(5, ' ') + ' ↓   ',
+      map.toString()
+    )
     const indexdiff = { put: new Set(), del: new Set() }
     for (const key of del) {
       if (!_set.has(key)) continue
-      if (filter.has(key)) {
-        filter.set(key, filter.get(key) + 1)
-        continue
-      }
-      filter.set(key, 1)
+      filter.set(key, filter.get(key) - 1)
+      if (filter.get(key) != -1) continue
       for (const index of _set.get(key).keys()) {
         const current = filterindex.get(index)
+        console.log(key, current)
         if (current === 1) indexdiff.del.add(index)
         filterindex.set(index, current - 1)
       }
     }
     for (const key of put) {
-      if (!_set.has(key) || !filter.has(key)) continue
-      if (filter.get(key) > 1) {
-        filter.set(key, filter.get(key) - 1)
-        continue
-      }
-      filter.delete(key)
+      if (!_set.has(key)) continue
+      filter.set(key, Math.min(filter.get(key) + 1, 0))
+      if (filter.get(key) != 0) continue
       for (const index of _set.get(key).keys()) {
         const current = filterindex.get(index)
         if (current === 0) {
@@ -46,9 +42,11 @@ module.exports = (cube, map) => {
             indexdiff.del.delete(index)
           else indexdiff.put.add(index)
         }
+        console.log(index, current)
         filterindex.set(index, current + 1)
       }
     }
+    console.log(indexdiff)
     await hub.emit('filter changed', {
       bitindex,
       put: Array.from(indexdiff.put),
@@ -79,6 +77,7 @@ module.exports = (cube, map) => {
     })
   }
   api.bitindex = bitindex
+  api.map = map
   api.on = hub.on
   api.filter = filter
   api.batch = (dataindicies, put, del) => {
@@ -100,7 +99,7 @@ module.exports = (cube, map) => {
       }
       let count = 0
       for (const key of keys) {
-        if (!filter.has(key)) count++
+        if (filter.get(key) >= 0) count++
         _set.get(key).delete(index)
       }
       if (count > 0) diff.del.push(index)
@@ -116,11 +115,13 @@ module.exports = (cube, map) => {
       }
       let count = 0
       for (const key of keys) {
-        if (!filter.has(key)) count++
         if (!_set.has(key)) _set.set(key, new Set())
         _set.get(key).add(index)
+        if (!filter.has(key)) filter.set(key, 0)
+        if (filter.get(key) >= 0) count++
       }
       if (count > 0) diff.put.push(index)
+      console.log(index, count)
       filterindex.set(index, count)
     })
     for (const i of diff.del)
