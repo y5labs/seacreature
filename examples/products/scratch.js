@@ -3,10 +3,10 @@
 const Cube = require('seacreature/analytics/cube')
 const data = {
   Orders: [
-    { Id: 'Bob', ProductId: 'Beer' },
-    { Id: 'Bruce', ProductId: 'Beer' },
-    { Id: 'Mary', ProductId: 'Oranges' },
-    { Id: 'Sue', ProductId: 'Apples' }
+    { Id: 'Bob Beer', ProductId: 'Beer' },
+    { Id: 'Bruce Beer', ProductId: 'Beer' },
+    { Id: 'Mary Oranges', ProductId: 'Oranges' },
+    { Id: 'Sue Apples', ProductId: 'Apples' }
   ],
   Products: [
     { Id: 'Beer', SupplierId: 'Bottle-O' },
@@ -55,13 +55,13 @@ console.log('Order Product  Supplier')
 console.log('ID PO OP ID SP PS ID')
 const print = msg => {
   console.log(
-    bool(order_byid.filter[0] !== null),
+    bool(Array.from(orders).length),
     bool(order_byproduct.filter.size),
     bool(product_byorder.filter.size),
-    bool(product_byid.filter[0] !== null),
+    bool(Array.from(products).length),
     bool(product_bysupplier.filter.size),
     bool(supplier_byproduct.filter.size),
-    bool(supplier_byid.filter[0] !== null),
+    bool(Array.from(suppliers).length),
     // bool(orders.link_filter.get(3)),
     // bool(products.link_filter.get(1)),
     // bool(suppliers.link_filter.get(1)),
@@ -98,7 +98,7 @@ const print = msg => {
 
 // Scenario 2
 print()
-await order_byid('Bob')
+await order_byid('Bob Beer')
 print('order_byid(Bob)')
 await supplier_byid('Bottle-O')
 print('supplier_byid(Bottle-O)')

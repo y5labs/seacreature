@@ -12,7 +12,7 @@ const Mutex = require('../lib/mutex')
 
 const print_cube = cube => cube.identity.toString().split(' => ')[0]
 
-const visit_links = (target, payload, fn) => {
+const visit_links = async (target, payload, fn) => {
   const seen = new Set()
   const unseen = new Map()
   unseen.set(target, payload)
@@ -22,9 +22,8 @@ const visit_links = (target, payload, fn) => {
     for (const cube of tosee) seen.add(cube[0])
     for (const cube of tosee) {
       for (const [c, d] of cube[0].forward.entries()) {
-        const params = fn(cube[0], c, d, cube[1], seen.has(c))
         if (seen.has(c)) continue
-        unseen.set(c, params)
+        unseen.set(c, await fn(cube[0], c, d, cube[1]))
       }
     }
   }
@@ -161,17 +160,19 @@ module.exports = identity => {
         throw new Error('Cubes are already linked')
       if (!haslinkdiff) {
         hub.on('update link selection', async params => {
-          visit_links(api, params, (source, target, dimension, params, seen) => {
+          await visit_links(api, params, async (source, target, dimension, params) => {
+            await dimension(params)
             const result = {
               put: params.put.map(i => dimension.lookup(i)).flat(),
               del: params.del.map(i => dimension.lookup(i)).flat()
             }
-            console.log(
-              print_cube(source),
-              print_cube(target),
-              params,
-              result
-            )
+            // console.log(
+            //   print_cube(source),
+            //   '=>',
+            //   print_cube(target),
+            //   params,
+            //   result
+            // )
             return result
           })
         })
@@ -184,12 +185,19 @@ module.exports = identity => {
     },
     batch_calculate_selection_change: async ({ put, del }) => {
       if (put.length == 0 && del.length == 0) return
-      const changes = {
-        put: put.filter(p => filterbits.zero(p[0])).map(p => p[1]),
-        del: del.map(d => d[1])
+      const changes = { put: [], del: [] }
+      const linkchanges = { put: [], del: [] }
+      for (const d of del) {
+        changes.del.push(d[1])
+        linkchanges.del.push(i2id(d[0]))
+      }
+      for (const p of put) {
+        if (!filterbits.zero(p[0])) continue
+        changes.put.push(p[1])
+        linkchanges.put.push(i2id(p[0]))
       }
       await hub.emit('selection changed', changes)
-      await hub.emit('update link selection', changes)
+      await hub.emit('update link selection', linkchanges)
     },
     batch: async ({ put = [], del = [] }) => {
       const del_ids = []
