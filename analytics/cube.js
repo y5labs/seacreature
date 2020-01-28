@@ -161,8 +161,18 @@ module.exports = identity => {
         throw new Error('Cubes are already linked')
       if (!haslinkdiff) {
         hub.on('update link selection', async params => {
-          visit_links(api, params, (source, target, link, params, seen) => {
-            console.log(print_cube(source), print_cube(target), params)
+          visit_links(api, params, (source, target, dimension, params, seen) => {
+            const result = {
+              put: params.put.map(i => dimension.lookup(i)).flat(),
+              del: params.del.map(i => dimension.lookup(i)).flat()
+            }
+            console.log(
+              print_cube(source),
+              print_cube(target),
+              params,
+              result
+            )
+            return result
           })
         })
         haslinkdiff = true
