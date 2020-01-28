@@ -3,15 +3,12 @@ const Hub = require('../lib/hub')
 
 module.exports = (cube, map) => {
   const _set = new Map()
-  const filter = new Map()
   let shownulls = true
   const nulls = new Set()
 
   const hub = Hub()
   const bitindex = cube.filterbits.add()
-  const filterindex = new SparseArray()
 
-  // TODO this is broken
   const api = async ({ put = [], del = [] }) => {
     console.log(
       '  link_multiple',
@@ -19,28 +16,22 @@ module.exports = (cube, map) => {
       del.length.toString().padStart(5, ' ') + ' ↓   ',
       map.toString()
     )
-    const indexdiff = { put: new Set(), del: new Set() }
+    const linkdiff = { put: [], del: [] }
     for (const key of del) {
       if (!_set.has(key)) continue
       for (const index of _set.get(key).keys()) {
-        // TODO
-        // indexdiff.del.add(index)
+        linkdiff.del.push(index)
         console.log(cube.print(), '-', key, '=>', cube.i2id(index))
       }
     }
     for (const key of put) {
       if (!_set.has(key)) continue
       for (const index of _set.get(key).keys()) {
-        // TODO
-        // indexdiff.put.add(index)
-        console.log(cube.print(), '+', key, '=>', cube.i2id(index), current, filter.get(key))
+        linkdiff.put.push(index)
+        console.log(cube.print(), '+', key, '=>', cube.i2id(index))
       }
     }
-    // await hub.emit('filter changed', {
-    //   bitindex,
-    //   put: Array.from(indexdiff.put),
-    //   del: Array.from(indexdiff.del)
-    // })
+    await hub.emit('link changed', linkdiff)
   }
   api.lookup = key =>
     !_set.has(key) ? []
@@ -68,7 +59,6 @@ module.exports = (cube, map) => {
   api.bitindex = bitindex
   api.map = map
   api.on = hub.on
-  api.filter = filter
   api.batch = (dataindicies, put, del) => {
     // console.log(
     //   '  link_multiple',
@@ -77,6 +67,7 @@ module.exports = (cube, map) => {
     //   map.toString()
     // )
     const diff = { put: [], del: [] }
+    const linkdiff = { put: [], del: [] }
     del.forEach((d, i) => {
       const keys = map(d) || []
       const index = dataindicies.del[i]
@@ -85,12 +76,11 @@ module.exports = (cube, map) => {
         if (shownulls) diff.del.push(index)
         return
       }
-      let count = 0
       for (const key of keys) {
-        if (filter.get(key) >= 0) count++
         _set.get(key).delete(index)
+        linkdiff.del.push(index)
       }
-      if (count > 0) diff.del.push(index)
+      diff.del.push(index)
     })
     put.forEach((d, i) => {
       const keys = map(d) || []
@@ -100,22 +90,20 @@ module.exports = (cube, map) => {
         if (shownulls) diff.put.push(index)
         return
       }
-      let count = 0
       for (const key of keys) {
         if (!_set.has(key)) _set.set(key, new Set())
         _set.get(key).add(index)
-        // TODO
         diff.put.push(index)
-        // filterindex.set(index, count)
+        linkdiff.put.push(index)
         console.log(cube.print(), '+', key, '=>', cube.i2id(index))
       }
     })
-    // TODO
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one
     for (const i of diff.put)
       cube.filterbits[bitindex.offset][i] &= ~bitindex.one
     hub.emit('batch', { put, del, diff })
+    hub.emit('link changed', linkdiff)
     return diff
   }
   return api
