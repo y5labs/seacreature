@@ -10,8 +10,6 @@ const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
 
-const print_cube = cube => cube.identity.toString().split(' => ')[0]
-
 const visit_links = async (target, payload, fn) => {
   const seen = new Set()
   const unseen = new Map()
@@ -59,7 +57,7 @@ module.exports = identity => {
     //   '  cube filtered',
     //   put.length.toString().padStart(5, ' ') + ' ↑',
     //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   print_cube(api),
+    //   api.print(),
     //   { bitindex, put, del }
     // )
 
@@ -98,6 +96,7 @@ module.exports = identity => {
     id2i,
     isselected,
     identity,
+    print: () => api.identity.toString().split(' => ')[0],
     on: (...args) => hub.on(...args),
     length: () => index.length(),
     filterbits,
@@ -167,9 +166,9 @@ module.exports = identity => {
               del: params.del.map(i => dimension.lookup(i)).flat()
             }
             console.log(
-              print_cube(source),
+              source.print(),
               '=>',
-              print_cube(target),
+              target.print(),
               dimension.map.toString(),
               params,
               result
@@ -187,16 +186,22 @@ module.exports = identity => {
       if (put.length == 0 && del.length == 0) return
       const changes = { put: [], del: [] }
       const linkchanges = { put: [], del: [] }
-      for (const d of del) {
-        changes.del.push(d[1])
-        linkchanges.del.push(i2id(d[0]))
+      for (const [i, d] of del) {
+        changes.del.push(d)
+        linkchanges.del.push(i2id(i))
       }
-      for (const p of put) {
-        if (!filterbits.zero(p[0])) continue
-        changes.put.push(p[1])
-        linkchanges.put.push(i2id(p[0]))
+      for (const [i, d] of put) {
+        if (!filterbits.zero(i)) continue
+        changes.put.push(d)
+        linkchanges.put.push(i2id(i))
       }
       await hub.emit('selection changed', changes)
+      console.log(api.print(), 'update link selection', linkchanges)
+
+      // for (const [cube, dimension] of api.forward.entries()) {
+      //   await dimension(linkchanges)
+      // }
+
       await hub.emit('update link selection', linkchanges)
     },
     batch: async ({ put = [], del = [] }) => {

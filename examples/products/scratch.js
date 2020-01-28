@@ -44,34 +44,19 @@ await suppliers.batch_calculate_selection_change(suppliers_indicies)
 await products.batch_calculate_selection_change(products_indicies)
 await orders.batch_calculate_selection_change(orders_indicies)
 
-const i0 = i => i[0]
-const pad = s => s.toString().padStart(2, ' ')
-const bool = b => {
-  if (b === true) return pad(1)
-  if (b === false) return pad(0)
-  return pad(b)
-}
-const enabled = d =>
-  bool(Array.from(d.filter.values())
-    .filter(d => d >= 0).length)
-console.log('Order Product  Supplier')
-console.log('ID PO    OP    ID SP    PS    ID')
+const filter = f =>
+  Array.from(f.filter.entries(),
+    f => `${f[0]}:${f[1]}`).join(', ')
+
 const print = msg => {
-  console.log(
-    bool(Array.from(orders).length),
-    enabled(order_byproduct),
-    bool(order_byproduct.filter.get('Apples')),
-    enabled(product_byorder),
-    bool(product_byorder.filter.get('Sue Apples')),
-    bool(Array.from(products).length),
-    enabled(product_bysupplier),
-    bool(product_bysupplier.filter.get('Vege Bin')),
-    enabled(supplier_byproduct),
-    bool(supplier_byproduct.filter.get('Apples')),
-    bool(Array.from(suppliers).length),
-    msg,
-    Array.from(suppliers)
-  )
+  console.log('***', msg)
+  console.log('Or', Array.from(orders).join(', '))
+  console.log('OP', filter(order_byproduct))
+  console.log('PO', filter(product_byorder))
+  console.log('Pr', Array.from(products).join(', '))
+  console.log('PS', filter(product_bysupplier))
+  console.log('SP', filter(supplier_byproduct))
+  console.log('Su', Array.from(suppliers).join(', '))
 }
 
 // Scenario 2

@@ -21,15 +21,22 @@ module.exports = (cube, map) => {
       if (!_set.has(key)) continue
       filter.set(key, filter.get(key) - 1)
       if (filter.get(key) != -1) continue
-      for (const index of _set.get(key).keys())
+      for (const index of _set.get(key).keys()) {
         indexdiff.del.add(index)
+        console.log(cube.print(), '-', key, '=>', cube.i2id(index))
+      }
     }
     for (const key of put) {
       if (!_set.has(key)) continue
-      filter.set(key, Math.min(filter.get(key) + 1, 0))
-      if (filter.get(key) != 0) continue
-      for (const index of _set.get(key).keys())
+      if (filter.get(key) != -1) {
+        filter.set(key, Math.min(filter.get(key) + 1, 0))
+        continue
+      }
+      filter.set(key, 0)
+      for (const index of _set.get(key).keys()) {
         indexdiff.put.add(index)
+        console.log(cube.print(), '+', key, '=>', cube.i2id(index))
+      }
     }
     await hub.emit('filter changed', {
       bitindex,
@@ -93,8 +100,11 @@ module.exports = (cube, map) => {
       }
       if (!_set.has(key)) _set.set(key, new Set())
       _set.get(key).add(index)
-      if (!filter.has(key)) filter.set(key, 0)
-      if (filter.get(key) >= 0) diff.put.push(index)
+      if (!filter.has(key)) filter.set(key, -1)
+      if (filter.get(key) >= 0) {
+        diff.put.push(index)
+        console.log(cube.print(), '+', key, '=>', cube.i2id(index))
+      }
     })
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one
