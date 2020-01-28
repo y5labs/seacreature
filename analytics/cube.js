@@ -32,6 +32,7 @@ module.exports = identity => {
   const data = new Map()
   const lookup = new Map()
   const index = new SparseArray()
+  const refcount = new SparseArray()
   const filterbits = new BitArray()
 
   let haslinkdiff = false
@@ -102,6 +103,7 @@ module.exports = identity => {
     filterbits,
     link_masks,
     index,
+    refcount,
     forward,
     range_single: (map) => {
       const result = RangeSingle(api, map)
@@ -220,12 +222,15 @@ module.exports = identity => {
         data.set(id, d)
       }
       const indicies = index.batch({ put: put_ids, del: del_ids })
+      refcount.length(Math.max(...indicies.put) + 1)
       const result = {
         put: indicies.put.map(i => {
+          refcount.set(i, 0)
           lookup.set(i2id(i), i)
           return [i, i2d(i)]
         }),
         del: indicies.del.map((i, index) => {
+          refcount.set(i, null)
           lookup.delete(i2id(i))
           return [i, del[index]]
         })
