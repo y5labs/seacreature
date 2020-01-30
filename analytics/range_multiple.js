@@ -73,12 +73,14 @@ module.exports = (cube, map) => {
   api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
-  api.filtered = function*(n) {
+  const iterate = (startfn, endfn, fn) => function*(n) {
+    start = startfn()
+    end = endfn()
     if (n === 0) return
     if (n > 0) {
-      let i = indicies[0]
-      while (n > 0 && i <= indicies[1]) {
-        if (cube.filterbits.zero(_range[i][1])) {
+      let i = start
+      while (n > 0 && i <= end) {
+        if (fn(_range[i][1])) {
           yield [_range[i][0], cube.i2d(_range[i][1])]
           n--
         }
@@ -86,9 +88,9 @@ module.exports = (cube, map) => {
       }
     }
     else {
-      let i = indicies[1]
-      while (n < 0 && i >= indicies[0]) {
-        if (cube.filterbits.zero(_range[i][1])) {
+      let i = end
+      while (n < 0 && i >= start) {
+        if (fn(_range[i][1])) {
           yield [_range[i][0], cube.i2d(_range[i][1])]
           n++
         }
@@ -99,70 +101,28 @@ module.exports = (cube, map) => {
     while (n > 0) {
       const item = iterator.next()
       if (item.done) break
-      if (cube.filterbits.zero(item.value)) {
+      if (fn(item.value)) {
         yield [null, cube.i2d(item.value)]
         n--
       }
     }
   }
-  api.context = function*(n) {
-    if (n === 0) return
-    if (n > 0) {
-      let i = 0
-      while (n > 0 && i < _range.length) {
-        if (cube.filterbits.zeroExcept(_range[i][1], bitindex.offset, ~bitindex.one)) {
-          yield [_range[i][0], cube.i2d(_range[i][1])]
-          n--
-        }
-        i++
-      }
-    }
-    else {
-      let i = _range.length - 1
-      while (n < 0 && i >= 0) {
-        if (cube.filterbits.zeroExcept(_range[i][1], bitindex.offset, ~bitindex.one)) {
-          yield [_range[i][0], cube.i2d(_range[i][1])]
-          n++
-        }
-        i--
-      }
-    }
-    const iterator = nulls[Symbol.iterator]()
-    while (n > 0) {
-      const item = iterator.next()
-      if (item.done) break
-      if (cube.filterbits.zeroExcept(item.value, bitindex.offset, ~bitindex.one)) {
-        yield [null, cube.i2d(item.value)]
-        n--
-      }
-    }
-  }
-  api.unfiltered = function*(n) {
-    if (n === 0) return
-    if (n > 0) {
-      let i = 0
-      while (n > 0 && i < _range.length) {
-        yield [_range[i][0], cube.i2d(_range[i][1])]
-        n--
-        i++
-      }
-    }
-    else {
-      let i = _range.length - 1
-      while (n < 0 && i >= 0) {
-        yield [_range[i][0], cube.i2d(_range[i][1])]
-        n++
-        i--
-      }
-    }
-    const iterator = nulls[Symbol.iterator]()
-    while (n > 0) {
-      const item = iterator.next()
-      if (item.done) break
-      yield [null, cube.i2d(item.value)]
-      n--
-    }
-  }
+  api.highlighted = iterate(
+    () => indicies[0],
+    () => indicies[1],
+    i => cube.filterbits.zero(i) && cube.linkbits.zero(i))
+  api.filtered = iterate(
+    () => indicies[0],
+    () => indicies[1],
+    i => cube.filterbits.zero(i))
+  api.context = iterate(
+    () => 0,
+    () => _range.length - 1,
+    i => cube.filterbits.zeroExcept(i, bitindex.offset, ~bitindex.one))
+  api.unfiltered = iterate(
+    () => 0,
+    () => _range.length - 1,
+    i => true)
   api.batch = (dataindicies, put, del) => {
     // console.log(
     //   ' range_multiple',

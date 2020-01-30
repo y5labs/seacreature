@@ -85,7 +85,7 @@ module.exports = (cube, map) => {
     filter.clear()
     await hub.emit('filter changed', { bitindex, put: [], del })
   }
-  api.filtered = function*(n) {
+  const iterate = fn => function*(n) {
     if (n === 0) return
     const keys = n > 0 ? filter : Array.from(filter).reverse()
     const keyiterator = keys[Symbol.iterator]()
@@ -96,7 +96,7 @@ module.exports = (cube, map) => {
       while (n > 0) {
         const index = indexiterator.next()
         if (index.done) break
-        if (cube.filterbits.zero(index.value)) {
+        if (fn(index.value)) {
           yield [key.value, cube.i2d(index.value)]
           n--
         }
@@ -106,66 +106,20 @@ module.exports = (cube, map) => {
     while (n > 0) {
       const item = nulliterator.next()
       if (item.done) break
-      if (cube.filterbits.zero(item.value)) {
+      if (fn(item.value)) {
         yield [null, cube.i2d(item.value)]
         n--
       }
     }
   }
-  api.context = function*(n) {
-    if (n === 0) return
-    const source = _set.keys()
-    const keys = n > 0 ? source : Array.from(source).reverse()
-    const keyiterator = keys[Symbol.iterator]()
-    while (n > 0) {
-      const key = keyiterator.next()
-      if (key.done) break
-      const indexiterator = _set.get(key.value)[Symbol.iterator]()
-      while (n > 0) {
-        const index = indexiterator.next()
-        if (index.done) break
-        if (cube.filterbits.zeroExcept(index.value, bitindex.offset, ~bitindex.one)) {
-          yield [key.value, cube.i2d(index.value)]
-          n--
-        }
-      }
-    }
-    const nulliterator = nulls[Symbol.iterator]()
-    while (n > 0) {
-      const item = nulliterator.next()
-      if (item.done) break
-      if (cube.filterbits.zero(item.value)) {
-        yield [null, cube.i2d(item.value)]
-        n--
-      }
-    }
-  }
-  api.unfiltered = function*(n) {
-    if (n === 0) return
-    const source = _set.keys()
-    const keys = n > 0 ? source : Array.from(source).reverse()
-    const keyiterator = keys[Symbol.iterator]()
-    while (n > 0) {
-      const key = keyiterator.next()
-      if (key.done) break
-      const indexiterator = _set.get(key.value)[Symbol.iterator]()
-      while (n > 0) {
-        const index = indexiterator.next()
-        if (index.done) break
-        yield [key.value, cube.i2d(index.value)]
-        n--
-      }
-    }
-    const nulliterator = nulls[Symbol.iterator]()
-    while (n > 0) {
-      const item = nulliterator.next()
-      if (item.done) break
-      if (cube.filterbits.zero(item.value)) {
-        yield [null, cube.i2d(item.value)]
-        n--
-      }
-    }
-  }
+  api.highlighted = iterate(
+    i => cube.filterbits.zero(i) && cube.linkbits.zero(i))
+  api.filtered = iterate(
+    i => cube.filterbits.zero(i))
+  api.context = iterate(
+    i => cube.filterbits.zeroExcept(i, bitindex.offset, ~bitindex.one))
+  api.unfiltered = iterate(
+    i => true)
   api.batch = (dataindicies, put, del) => {
     // console.log(
     //   '     set_single',

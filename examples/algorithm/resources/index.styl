@@ -1,0 +1,59 @@
+$primary = #46413E
+$unselected = #bbb
+$active = #666
+$subtle-border = #ddd
+$brand-primary = #F8993F
+$danger = #d00000
+
+*
+  box-sizing border-box
+
+body
+  margin 0
+  padding 0
+  background-color white
+  font-family Lato, Helvetica, sans-serif
+  font-size 16px
+
+#root
+  background-color white
+  max-width 40rem
+  min-height 100%
+  margin 0 auto
+  border-left 1px solid $subtle-border
+  border-right 1px solid $subtle-border
+  display grid
+  grid-template-rows 3.75rem auto
+  padding-bottom 5rem
+
+.box
+  padding 0.5rem
+  h2
+    margin 0
+.box + .box
+  border-top 1px solid $primary
+
+.bar
+  display inline-block
+  height 0.5rem
+  margin-right 1rem
+  background-color #0091CD
+  &.blank
+    background-color transparent
+  &.red
+    background-color #D81F38
+  &.green
+    background-color #30C100
+
+.bar + .bar
+  margin-left -1rem
+
+ul
+  list-style-type none
+  padding-left 1rem
+
+.cols
+  display flex
+  .box + .box
+    border-top none
+    border-left 1px solid $primary
