@@ -144,6 +144,7 @@ module.exports = identity => {
     on: (...args) => hub.on(...args),
     length: () => index.length(),
     filterbits,
+    linkbits,
     index,
     forward,
     range_single: (map) => {
