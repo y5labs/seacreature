@@ -66,19 +66,19 @@ module.exports = identity => {
     const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
-      const id = i2id(i)
       filterbits[bitindex.offset][i] |= bitindex.one
-      if (filterbits.only(i, bitindex.offset, bitindex.one))
+      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
+        const id = i2id(i)
         changes.del.push(id2d(id))
-      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
         linkchanges.del.push(id)
+      }
     }
     for (const i of put) {
-      const id = i2id(i)
-      if (filterbits.only(i, bitindex.offset, bitindex.one))
+      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
+        const id = i2id(i)
         changes.put.push(id2d(id))
-      if (filterbits.onlyExceptMask(i, bitindex.offset, bitindex.one, link_masks))
         linkchanges.put.push(id)
+      }
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
@@ -123,24 +123,35 @@ module.exports = identity => {
     link_masks[linkbitindex.offset] |= linkbitindex.one
     hub.on('update link selection', async params => {
       console.log(api.print(), 'update link selection', params)
-      await visit_links(api, params, async (source, target, dimension, params) => {
+      for (const [cube, dimension] of api.forward.entries()) {
         await dimension(params)
-        const result = {
-          put: params.put.map(i =>
-            dimension.lookup(i)).flat(),
-          del: params.del.map(i =>
-            dimension.lookup(i)).flat()
-        }
         console.log(
-          source.print(),
+          api.print(),
           '=>',
-          target.print(),
+          cube.print(),
           dimension.map.toString(),
-          params,
-          result
+          params
         )
-        return result
-      })
+      }
+      
+      // await visit_links(api, params, async (source, target, dimension, params) => {
+      //   await dimension(params)
+      //   const result = {
+      //     put: params.put.map(i =>
+      //       dimension.lookup(i)).flat(),
+      //     del: params.del.map(i =>
+      //       dimension.lookup(i)).flat()
+      //   }
+      //   console.log(
+      //     source.print(),
+      //     '=>',
+      //     target.print(),
+      //     dimension.map.toString(),
+      //     params,
+      //     result
+      //   )
+      //   return result
+      // })
     })
   }
 
