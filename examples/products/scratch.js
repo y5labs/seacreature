@@ -45,10 +45,14 @@ await products.batch_calculate_selection_change(products_indicies)
 await orders.batch_calculate_selection_change(orders_indicies)
 
 const print = msg => {
-  console.log('***', msg)
-  console.log('Or', Array.from(orders).join(', '))
-  console.log('Pr', Array.from(products).join(', '))
-  console.log('Su', Array.from(suppliers).join(', '))
+  console.log('*********', msg)
+  console.log('O', Array.from(orders, id =>
+    `${id}:${orders.refcount.get(orders.id2i(id))}`).join(', '))
+  console.log('P', Array.from(products, id =>
+    `${id}:${products.refcount.get(products.id2i(id))}`).join(', '))
+  console.log('S', Array.from(suppliers, id =>
+    `${id}:${suppliers.refcount.get(suppliers.id2i(id))}`).join(', '))
+  console.log('*********', msg)
 }
 
 // Scenario 2

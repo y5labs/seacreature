@@ -118,6 +118,7 @@ module.exports = (cube, map) => {
     for (const i of diff.put)
       cube.linkbits[bitindex.offset][i] &= ~bitindex.one
     hub.emit('batch', { put, del, diff })
+    // hub.emit('link changed', linkdiff)
     return diff
   }
   return api

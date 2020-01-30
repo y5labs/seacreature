@@ -58,7 +58,6 @@ module.exports = identity => {
     const changes = { put: [], del: [] }
 
     for (const i of del) {
-      const id = i2id(i)
       filterbits[bitindex.offset][i] |= bitindex.one
       if (filterbits.only(i, bitindex.offset, bitindex.one)
         && linkbits.zero(i))
