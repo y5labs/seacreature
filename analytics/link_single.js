@@ -1,3 +1,4 @@
+const SparseArray = require('./sparsearray')
 const Hub = require('../lib/hub')
 
 module.exports = (cube, map) => {
@@ -65,7 +66,9 @@ module.exports = (cube, map) => {
     })
   }
   api.bitindex = bitindex
+  api.filterindex = filterindex
   api.map = map
+  api.set = _set
   api.on = hub.on
   api.batch = (dataindicies, put, del) => {
     // console.log(

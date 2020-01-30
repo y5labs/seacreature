@@ -37,6 +37,7 @@ module.exports = identity => {
 
   const forward = new Map()
   const linkbits = new BitArray()
+  const linkcount = new SparseArray()
   const links = []
 
   const i2d = i => data.get(index.get(i))
@@ -58,6 +59,7 @@ module.exports = identity => {
     const changes = { put: [], del: [] }
 
     for (const i of del) {
+      const id = i2id(i)
       filterbits[bitindex.offset][i] |= bitindex.one
       if (filterbits.only(i, bitindex.offset, bitindex.one)
         && linkbits.zero(i))
@@ -144,6 +146,7 @@ module.exports = identity => {
     length: () => index.length(),
     filterbits,
     linkbits,
+    linkcount,
     index,
     forward,
     range_single: (map) => {
@@ -230,12 +233,15 @@ module.exports = identity => {
         data.set(id, d)
       }
       const indicies = index.batch({ put: put_ids, del: del_ids })
+      linkcount.length(Math.max(...indicies.put) + 1)
       const result = {
         put: indicies.put.map(i => {
+          linkcount.set(i, 0)
           lookup.set(i2id(i), i)
           return [i, i2d(i)]
         }),
         del: indicies.del.map((i, index) => {
+          linkcount.set(i, null)
           lookup.delete(i2id(i))
           return [i, del[index]]
         })
@@ -252,23 +258,16 @@ module.exports = identity => {
       return result
     }
   }
-  api.highlighted = function*() {
+  const iterate = fn => function*() {
     const iterator = index[Symbol.iterator]()
     let i = iterator.next()
     while (!i.done) {
-      if (filterbits.zero(i.value) && linkbits.zero(i.value))
-        yield i2id(i.value)
+      if (fn(i.value)) yield i2d(i.value)
       i = iterator.next()
     }
   }
-  api.filtered = function*() {
-    const iterator = index[Symbol.iterator]()
-    let i = iterator.next()
-    while (!i.done) {
-      if (filterbits.zero(i.value))
-        yield i2id(i.value)
-      i = iterator.next()
-    }
-  }
+  api.highlighted = iterate(i => filterbits.zero(i) && linkbits.zero(i))
+  api.filtered = iterate(i => filterbits.zero(i))
+  api.unfiltered = iterate(i => true)
   return api
 }

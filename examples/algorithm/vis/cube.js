@@ -42,7 +42,7 @@ inject('pod', ({ hub, state }) => {
 
     c.orders = Cube(o => o.Id)
     c.order_byid = c.orders.range_single(o => o.Id)
-    c.order_byproduct = c.orders.link_multiple(i => i.ProductId)
+    c.order_byproduct = c.orders.link_multiple(o => o.ProductIds)
 
     c.products.link_to(c.suppliers, c.supplier_byproduct)
     c.suppliers.link_to(c.products, c.product_bysupplier)

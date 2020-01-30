@@ -10,7 +10,6 @@ module.exports = (cube, map) => {
   const bitindex = cube.linkbits.add()
   const filterindex = new SparseArray()
 
-  // TODO this is broken
   const api = async ({ put = [], del = [] }) => {
     console.log(
       '  link_multiple',
@@ -69,15 +68,17 @@ module.exports = (cube, map) => {
     })
   }
   api.bitindex = bitindex
+  api.filterindex = filterindex
   api.map = map
+  api.set = _set
   api.on = hub.on
   api.batch = (dataindicies, put, del) => {
-    // console.log(
-    //   '  link_multiple',
-    //   put.length.toString().padStart(5, ' ') + ' ↑',
-    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   map.toString()
-    // )
+    console.log(
+      '  link_multiple',
+      put.length.toString().padStart(5, ' ') + ' ↑',
+      del.length.toString().padStart(5, ' ') + ' ↓   ',
+      map.toString()
+    )
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
     del.forEach((d, i) => {
@@ -111,7 +112,7 @@ module.exports = (cube, map) => {
         console.log(cube.print(), '+', key, '=>', cube.i2id(index))
       }
       if (count > 0) diff.put.push(index)
-      filterindex.set(index, count)
+      filterindex.set(index, 0)
     })
     for (const i of diff.del)
       cube.linkbits[bitindex.offset][i] |= bitindex.one
