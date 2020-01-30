@@ -11,6 +11,7 @@ inject('pod', ({ hub, state }) => {
       await state.cube.supplier_byid(id)
       delete state.filters.supplierbyid
     }
+    await hub.emit('push trace')
     await hub.emit('update')
   })
   hub.on('filter product by id', async id => {
@@ -22,6 +23,7 @@ inject('pod', ({ hub, state }) => {
       await state.cube.product_byid(id)
       delete state.filters.productbyid
     }
+    await hub.emit('push trace')
     await hub.emit('update')
   })
   hub.on('filter order by id', async id => {
@@ -33,6 +35,7 @@ inject('pod', ({ hub, state }) => {
       await state.cube.order_byid(id)
       delete state.filters.orderbyid
     }
+    await hub.emit('push trace')
     await hub.emit('update')
   })
 })

@@ -56,5 +56,16 @@ inject('pod', ({ hub, state }) => {
     await c.suppliers.batch_calculate_selection_change(suppliers_indicies)
     await c.products.batch_calculate_selection_change(products_indicies)
     await c.orders.batch_calculate_selection_change(orders_indicies)
+
+    c.traces = []
+    let current = []
+    hub.on('push trace', () => {
+      c.traces.push(current)
+      current = []
+    })
+
+    c.suppliers.on('trace', p => current.push(p))
+    c.products.on('trace', p => current.push(p))
+    c.orders.on('trace', p => current.push(p))
   })
 })

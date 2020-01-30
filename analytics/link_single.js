@@ -8,32 +8,45 @@ module.exports = (cube, map) => {
 
   const hub = Hub()
   const bitindex = cube.linkbits.add()
-  const filterindex = new SparseArray()
+  const linkcount = new SparseArray()
 
   const api = async ({ put = [], del = [] }) => {
-    console.log(
-      '    link_single',
-      put.length.toString().padStart(5, ' ') + ' ↑',
-      del.length.toString().padStart(5, ' ') + ' ↓   ',
-      map.toString()
-    )
     const indexdiff = { put: new Set(), del: new Set() }
+    const linkdiff = { put: [], del: [] }
     for (const key of del) {
       if (!_set.has(key)) continue
       for (const index of _set.get(key).keys()) {
-        const current = filterindex.get(index)
-        indexdiff.del.add(index)
-        console.log(cube.print(), '-', key, '=>', cube.i2id(index))
-        filterindex.set(index, current - 1)
+        const current = linkcount.get(index)
+        linkcount.set(index, current - 1)
+        if (current === 1) {
+          indexdiff.del.add(index)
+          linkdiff.del.push(index)
+        }
+        hub.emit('trace', {
+          op: '- link',
+          source: api.source.print(),
+          target: cube.print(),
+          key,
+          index: cube.i2id(index)
+        })
       }
     }
     for (const key of put) {
       if (!_set.has(key)) continue
       for (const index of _set.get(key).keys()) {
-        const current = filterindex.get(index)
-        indexdiff.put.add(index)
-        console.log(cube.print(), '+', key, '=>', cube.i2id(index))
-        filterindex.set(index, current + 1)
+        const current = linkcount.get(index)
+        if (current === 0) {
+          indexdiff.put.add(index)
+          linkdiff.put.push(index)
+        }
+        linkcount.set(index, current + 1)
+        hub.emit('trace', {
+          op: '+ link',
+          source: api.source.print(),
+          target: cube.print(),
+          key,
+          index: cube.i2id(index)
+        })
       }
     }
     await hub.emit('link changed', {
@@ -41,6 +54,7 @@ module.exports = (cube, map) => {
       put: Array.from(indexdiff.put),
       del: Array.from(indexdiff.del)
     })
+    return linkdiff
   }
   api.lookup = key =>
     !_set.has(key) ? []
@@ -66,17 +80,11 @@ module.exports = (cube, map) => {
     })
   }
   api.bitindex = bitindex
-  api.filterindex = filterindex
+  api.linkcount = linkcount
   api.map = map
   api.set = _set
   api.on = hub.on
   api.batch = (dataindicies, put, del) => {
-    // console.log(
-    //   '    link_single',
-    //   put.length.toString().padStart(5, ' ') + ' ↑',
-    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   map.toString()
-    // )
     const diff = { put: [], del: [] }
     del.forEach((d, i) => {
       const key = map(d)
@@ -88,7 +96,7 @@ module.exports = (cube, map) => {
       }
       _set.get(key).delete(index)
       diff.del.push(index)
-      filterindex.set(index, null)
+      linkcount.set(index, null)
     })
     put.forEach((d, i) => {
       const key = map(d)
@@ -101,15 +109,13 @@ module.exports = (cube, map) => {
       if (!_set.has(key)) _set.set(key, new Set())
       _set.get(key).add(index)
       diff.put.push(index)
-      filterindex.set(index, 0)
-      console.log(cube.print(), '+', key, '=>', cube.i2id(index))
+      linkcount.set(index, 0)
     })
     for (const i of diff.del)
       cube.linkbits[bitindex.offset][i] |= bitindex.one
     for (const i of diff.put)
       cube.linkbits[bitindex.offset][i] &= ~bitindex.one
     hub.emit('batch', { put, del, diff })
-    // hub.emit('link changed', linkdiff)
     return diff
   }
   return api

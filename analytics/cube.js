@@ -10,18 +10,19 @@ const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
 
-const visit_links = async (target, payload, fn) => {
+const visit_links = async (initial, payload, fn) => {
   const seen = new Set()
   const unseen = new Map()
-  unseen.set(target, payload)
+  unseen.set(initial, payload)
   while (unseen.size > 0) {
     const tosee = Array.from(unseen.entries())
     unseen.clear()
-    for (const cube of tosee) seen.add(cube[0])
-    for (const cube of tosee) {
-      for (const [c, d] of cube[0].forward.entries()) {
-        if (seen.has(c)) continue
-        unseen.set(c, await fn(cube[0], c, d, cube[1]))
+    for (const [source, params] of tosee) seen.add(source)
+    for (const [source, params] of tosee) {
+      for (const [target, dimension] of source.forward.entries()) {
+        if (seen.has(target)) continue
+        const result = await fn(source, target, dimension, params, seen.has(target))
+        unseen.set(target, result)
       }
     }
   }
@@ -57,26 +58,33 @@ module.exports = identity => {
     // )
 
     const changes = { put: [], del: [] }
+    const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
       const id = i2id(i)
       filterbits[bitindex.offset][i] |= bitindex.one
-      if (filterbits.only(i, bitindex.offset, bitindex.one)
-        && linkbits.zero(i))
-        changes.del.push(id2d(id))
+      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
+        linkchanges.del.push(id)
+        if (linkbits.zero(i))
+          changes.del.push(id2d(id))
+      }
     }
     for (const i of put) {
       const id = i2id(i)
-      if (filterbits.only(i, bitindex.offset, bitindex.one)
-        && linkbits.zero(i))
-        changes.put.push(id2d(id))
+      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
+        linkchanges.put.push(id)
+        if (linkbits.zero(i))
+          changes.put.push(id2d(id))
+      }
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
 
-    if (changes.put.length > 0 || changes.del.length > 0)
+    if (changes.put.length > 0 || changes.del.length > 0) {
       await hub.emit('selection changed', changes)
+      await hub.emit('update link selection', linkchanges)
+    }
   }
 
   const onlinkchanged = async ({ bitindex, put, del }) => {
@@ -91,46 +99,55 @@ module.exports = identity => {
     // )
 
     const changes = { put: [], del: [] }
+    const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
       const id = i2id(i)
       linkbits[bitindex.offset][i] |= bitindex.one
-      if (linkbits.only(i, bitindex.offset, bitindex.one)
-        && filterbits.zero(i))
-        changes.del.push(id2d(id))
+      if (filterbits.zero(i)) {
+        if (linkbits.only(i, bitindex.offset, bitindex.one)) {
+          linkchanges.del.push(id)
+          changes.del.push(id2d(id))
+        }
+      }
     }
     for (const i of put) {
       const id = i2id(i)
-      if (linkbits.only(i, bitindex.offset, bitindex.one)
-        && filterbits.zero(i))
-        changes.put.push(id2d(id))
+      if (filterbits.zero(i)) {
+        if (linkbits.only(i, bitindex.offset, bitindex.one)) {
+          linkchanges.put.push(id)
+          changes.put.push(id2d(id))
+        }
+      }
       linkbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('link changed', { bitindex, put, del })
 
-    if (changes.put.length > 0 || changes.del.length > 0)
+    if (changes.put.length > 0 || changes.del.length > 0) {
       await hub.emit('selection changed', changes)
+      await hub.emit('update link selection', linkchanges)
+    }
   }
 
   hub.on('update link selection', async params => {
-    console.log(api.print(), 'update link selection', params)
-    await visit_links(api, params, async (source, target, dimension, params) => {
-      await dimension(params)
-      const result = {
-        put: params.put.map(i =>
-          dimension.lookup(i)).flat(),
-        del: params.del.map(i =>
-          dimension.lookup(i)).flat()
-      }
-      console.log(
-        source.print(),
-        '=>',
-        target.print(),
-        dimension.map.toString(),
-        params,
-        result
-      )
+    await visit_links(api, params, async (source, target, dimension, params, hasseencube) => {
+      const result = await dimension(params)
+      // const roll = ids =>
+      //   Array.from(new Set(ids
+      //     .map(i => dimension.lookup(i))
+      //     .flat()))
+      // if (hasseencube) return null
+      // const result = {
+      //   put: roll(params.put),
+      //   del: roll(params.del)
+      // }
+      // hub.emit('trace', {
+      //   op: 'project',
+      //   source: source.print(),
+      //   target: target.print(),
+      //   params, result
+      // })
       return result
     })
   })
@@ -153,12 +170,14 @@ module.exports = identity => {
       const result = RangeSingle(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
+      result.on('trace', p => hub.emit('trace', p))
       return result
     },
     range_multiple: (map) => {
       const result = RangeMultiple(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
+      result.on('trace', p => hub.emit('trace', p))
       return result
     },
     range_multiple_text: (map, stemmer) => {
@@ -166,6 +185,7 @@ module.exports = identity => {
       const result = RangeMultiple(api, map_text)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
+      result.on('trace', p => hub.emit('trace', p))
       const search = (lo, hi) => {
         if (lo) lo = stemmer(lo)
         if (hi) hi = stemmer(hi)
@@ -179,42 +199,56 @@ module.exports = identity => {
       const result = SetSingle(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
+      result.on('trace', p => hub.emit('trace', p))
       return result
     },
     set_multiple: (map) => {
       const result = SetMultiple(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
+      result.on('trace', p => hub.emit('trace', p))
       return result
     },
     link_single: (map) => {
       const result = LinkSingle(api, map)
       dimensions.push(result)
       result.on('link changed', p => onlinkchanged(p))
+      result.on('trace', p => hub.emit('trace', p))
       return result
     },
     link_multiple: (map) => {
       const result = LinkMultiple(api, map)
       dimensions.push(result)
       result.on('link changed', p => onlinkchanged(p))
+      result.on('trace', p => hub.emit('trace', p))
       return result
     },
     link_to: (target, dimension) => {
       if (forward.has(target))
         throw new Error('Cubes are already linked')
       forward.set(target, dimension)
+      dimension.source = api
     },
     batch_calculate_selection_change: async ({ put, del }) => {
       if (put.length == 0 && del.length == 0) return
       const changes = { put: [], del: [] }
+      const linkchanges = { put: [], del: [] }
       for (const [i, d] of del) {
         changes.del.push(d)
+        linkchanges.del.push(i2id(i))
       }
       for (const [i, d] of put) {
-        if (!filterbits.zero(i)) continue
-        changes.put.push(d)
+        if (filterbits.zero(i) && linkbits.zero(i)) {
+          changes.put.push(d)
+          linkchanges.put.push(i2id(i))
+        }
       }
       await hub.emit('selection changed', changes)
+      // await hub.emit('update link selection', linkchanges)
+      for (const [cube, link] of forward.entries()) {
+        link(linkchanges)
+      }
+      // console.log(put, del)
       // TODO propagate selection into forward links
     },
     batch: async ({ put = [], del = [] }) => {
