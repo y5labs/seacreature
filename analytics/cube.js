@@ -209,13 +209,13 @@ module.exports = identity => {
       result.on('trace', p => hub.emit('trace', p))
       return result
     },
-    link_single: (map) => {
-      const result = LinkSingle(api, map)
-      dimensions.push(result)
-      result.on('link changed', p => onlinkchanged(p))
-      result.on('trace', p => hub.emit('trace', p))
-      return result
-    },
+    // link_single: (map) => {
+    //   const result = LinkSingle(api, map)
+    //   dimensions.push(result)
+    //   result.on('link changed', p => onlinkchanged(p))
+    //   result.on('trace', p => hub.emit('trace', p))
+    //   return result
+    // },
     link_multiple: (map) => {
       const result = LinkMultiple(api, map)
       dimensions.push(result)
@@ -244,10 +244,10 @@ module.exports = identity => {
         }
       }
       await hub.emit('selection changed', changes)
-      // await hub.emit('update link selection', linkchanges)
-      for (const [cube, link] of forward.entries()) {
-        link(linkchanges)
-      }
+      await hub.emit('update link selection', linkchanges)
+      // for (const [cube, link] of forward.entries()) {
+      //   link(linkchanges)
+      // }
       // console.log(put, del)
       // TODO propagate selection into forward links
     },

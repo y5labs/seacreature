@@ -13,6 +13,7 @@ inject('pod', ({ hub, state }) => {
     if (c) return
     state.cube = c = {}
     state.filters = {}
+
     const data = {
       Orders: [
         { Id: 'Bob', ProductIds: ['Beer'] },
@@ -37,7 +38,7 @@ inject('pod', ({ hub, state }) => {
 
     c.products = Cube(p => p.Id)
     c.product_byid = c.products.range_single(p => p.Id)
-    c.product_bysupplier = c.products.link_single(p => p.SupplierId)
+    c.product_bysupplier = c.products.link_multiple(p => [p.SupplierId])
     c.product_byorder = c.products.link_multiple(p => c.order_byproduct.lookup(p.Id))
 
     c.orders = Cube(o => o.Id)
@@ -49,14 +50,6 @@ inject('pod', ({ hub, state }) => {
     c.products.link_to(c.orders, c.order_byproduct)
     c.orders.link_to(c.products, c.product_byorder)
 
-    const orders_indicies = await c.orders.batch({ put: data.Orders })
-    const products_indicies = await c.products.batch({ put: data.Products })
-    const suppliers_indicies = await c.suppliers.batch({ put: data.Suppliers })
-
-    await c.suppliers.batch_calculate_selection_change(suppliers_indicies)
-    await c.products.batch_calculate_selection_change(products_indicies)
-    await c.orders.batch_calculate_selection_change(orders_indicies)
-
     c.traces = []
     let current = []
     hub.on('push trace', () => {
@@ -67,5 +60,15 @@ inject('pod', ({ hub, state }) => {
     c.suppliers.on('trace', p => current.push(p))
     c.products.on('trace', p => current.push(p))
     c.orders.on('trace', p => current.push(p))
+
+    const orders_indicies = await c.orders.batch({ put: data.Orders })
+    const products_indicies = await c.products.batch({ put: data.Products })
+    const suppliers_indicies = await c.suppliers.batch({ put: data.Suppliers })
+
+    await c.suppliers.batch_calculate_selection_change(suppliers_indicies)
+    await c.products.batch_calculate_selection_change(products_indicies)
+    await c.orders.batch_calculate_selection_change(orders_indicies)
+
+    hub.emit('push trace')
   })
 })

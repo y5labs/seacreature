@@ -2,37 +2,20 @@ const SparseArray = require('./sparsearray')
 const Hub = require('../lib/hub')
 
 module.exports = (cube, map) => {
-  const _set = new Map()
-  let shownulls = true
-  const nulls = new Set()
-
-  const hub = Hub()
   const bitindex = cube.linkbits.add()
   const filterindex = new SparseArray()
 
   const api = async ({ put = [], del = [] }) => {
     const indexdiff = { put: new Set(), del: new Set() }
-    const linkdiff = { put: [], del: [] }
-    for (const key of del) {
-      if (!_set.has(key)) continue
-      const node = _set.get(key)
-      node.count--
-      for (const index of node.indicies.keys()) {
-        const current = filterindex.get(index)
-        if (node.count <= 0) {
-          filterindex.set(index, current - 1)
-          if (current === 1) indexdiff.del.add(index)
-        }
-        linkdiff.del.push(index)
-        hub.emit('trace', {
-          op: '- link',
-          source: api.source.print(),
-          target: cube.print(),
-          key,
-          index: cube.i2id(index),
-          current
-        })
-      }
+    for (const index of del) {
+      hub.emit('trace', {
+        op: '- link',
+        source: api.source.print(),
+        target: cube.print(),
+        key,
+        index: cube.i2id(index),
+        current
+      })
     }
     for (const key of put) {
       if (!_set.has(key)) continue
