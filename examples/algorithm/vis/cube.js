@@ -51,15 +51,20 @@ inject('pod', ({ hub, state }) => {
     c.orders.link_to(c.products, c.product_byorder)
 
     c.traces = []
+    let count = 1
     let current = []
     hub.on('push trace', () => {
       c.traces.push(current)
       current = []
     })
-
-    c.suppliers.on('trace', p => current.push(p))
-    c.products.on('trace', p => current.push(p))
-    c.orders.on('trace', p => current.push(p))
+    const increment = p => {
+      p.count = count
+      count++
+      current.push(p)
+    }
+    c.suppliers.on('trace', increment)
+    c.products.on('trace', increment)
+    c.orders.on('trace', increment)
 
     const orders_indicies = await c.orders.batch({ put: data.Orders })
     const products_indicies = await c.products.batch({ put: data.Products })

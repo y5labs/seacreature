@@ -23,9 +23,9 @@ export default component({
           const filterbit = cube.filterbits[0][i].toString(2)
           const linkbit = cube.linkbits[0][i].toString(2)
           if (filterbit > 0 || linkbit > 0)
-            return h('li', `${s[1].Id} (${filterbit}, ${linkbit})`)
+            return h('li', `${s[1].Id} (${cube.refcount.filterindex.get(i)}, ${filterbit}, ${linkbit})`)
           else
-            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${filterbit}, ${linkbit})`)])
+            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${cube.refcount.filterindex.get(i)}, ${filterbit}, ${linkbit})`)])
         }))
     ])
     const link = (from, to) => {
@@ -60,18 +60,25 @@ export default component({
       ...state.cube.traces.map(trace => {
         const tracelink = (from, to) => h('td', [
           h('ul', trace
-            .filter(t => t.op.indexOf('link') != -1)
-            .filter(t => t.source == from[0] && t.target == to[0])
-            .map(t => h('li', `${t.op[0]} ${t.key} => ${t.index} (${t.current})`)))
+            .filter(t => t.op.indexOf('link') != -1
+              && t.source == from[0]
+              && t.target == to[0])
+            .map(t => h('li', `${t.count} ${t.op[0]} ${t.key} => ${t.index} (${t.current})`)))
+        ])
+        const tracecube = id => h('td', [
+          h('ul', trace
+            .filter(t => t.op.indexOf('ref') != -1
+              && t.target == id)
+            .map(t => h('li', `${t.count} ${t.op[0]} ${t.index} (${t.current})`)))
         ])
         return h('tr', [
-          empty('order'),
+          tracecube('o'),
           tracelink('product', 'order'),
           tracelink('order', 'product'),
-          empty('product'),
+          tracecube('p'),
           tracelink('supplier', 'product'),
           tracelink('product', 'supplier'),
-          empty('supplier')
+          tracecube('s')
         ])
       })
     ])

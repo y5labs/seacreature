@@ -23,7 +23,7 @@ module.exports = (cube, map) => {
           filterindex.set(index, current - 1)
           if (current === 1) indexdiff.del.add(index)
         }
-        linkdiff.del.push(index)
+        linkdiff.del.push(cube.i2id(index))
         hub.emit('trace', {
           op: '- link',
           source: api.source.print(),
@@ -41,10 +41,13 @@ module.exports = (cube, map) => {
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
         if (node.count <= 1) {
-          if (current === 0) indexdiff.put.add(index)
+          if (current === 0) {
+            indexdiff.del.delete(index)
+            indexdiff.put.add(index)
+          }
           filterindex.set(index, current + 1)
         }
-        linkdiff.put.push(index)
+        linkdiff.put.push(cube.i2id(index))
         hub.emit('trace', {
           op: '+ link',
           source: api.source.print(),
@@ -55,13 +58,15 @@ module.exports = (cube, map) => {
         })
       }
     }
-    console.log(cube.print(), indexdiff)
     await hub.emit('link changed', {
       bitindex,
       put: Array.from(indexdiff.put),
       del: Array.from(indexdiff.del)
     })
-    return linkdiff
+    return {
+      indexdiff,
+      linkdiff
+    }
   }
   api.lookup = key =>
     !_set.has(key) ? []
