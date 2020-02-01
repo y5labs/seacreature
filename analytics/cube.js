@@ -12,31 +12,6 @@ const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
 const config = require('./config')
 
-const visit_links = config.propagategraph ?
-  async (initial, payload, fn) => {
-    const seen = new Set()
-    const unseen = new Map()
-    unseen.set(initial, payload)
-    while (unseen.size > 0) {
-      const tosee = Array.from(unseen.entries())
-      unseen.clear()
-      for (const [source, params] of tosee) seen.add(source)
-      for (const [source, params] of tosee) {
-        for (const [target, dimension] of source.forward.entries()) {
-          if (!config.dolastlink && seen.has(target)) continue
-          if (config.handleinitial && target === initial) continue
-          const result = await fn(source, target, dimension, params, seen.has(target))
-          if (config.dolastlink && seen.has(target)) continue
-          unseen.set(target, result)
-        }
-      }
-    }
-  }
-  : async (initial, payload, fn) => {
-    for (const [target, dimension] of initial.forward.entries())
-      await fn(initial, target, dimension, payload)
-  }
-
 module.exports = identity => {
   const hub = Hub()
   const data = new Map()
@@ -119,17 +94,40 @@ module.exports = identity => {
 
     if (changes.put.length > 0 || changes.del.length > 0)
       await hub.emit('selection changed', changes)
-    if (config.publishlinkchanges)
+    if (config.publishfromlinkchange)
       if (linkchanges.put.length > 0 || linkchanges.del.length > 0)
         await hub.emit('update link selection', linkchanges)
   }
 
-  hub.on('update link selection', async params => {
-    await visit_links(api, params, async (source, target, dimension, params, hasseencube) => {
+  hub.on('update link selection', async payload => {
+    const fn = async (source, target, dimension, params) => {
       const { indexdiff, linkdiff } = await dimension(params)
-      target.refcount(indexdiff)
+      const refdiff = await target.refcount(indexdiff)
       return linkdiff
-    })
+    }
+    if (!config.propagategraph) {
+      for (const [target, dimension] of api.forward.entries())
+        await fn(api, target, dimension, payload)
+      return
+    }
+    const seen = new Set()
+    const unseen = new Map()
+    unseen.set(api, payload)
+    while (unseen.size > 0) {
+      const tosee = Array.from(unseen.entries())
+      unseen.clear()
+      for (const [source, params] of tosee) seen.add(source)
+      for (const [source, params] of tosee) {
+        const entries = Array.from(source.forward.entries())
+        for (const [target, dimension] of entries) {
+          if (!config.dolastlink && seen.has(target)) continue
+          if (config.handleinitial && target === api) continue
+          const result = await fn(source, target, dimension, params, entries)
+          if (config.dolastlink && seen.has(target)) continue
+          unseen.set(target, result)
+        }
+      }
+    }
   })
 
   const api = {
@@ -146,6 +144,8 @@ module.exports = identity => {
     linkcount,
     index,
     forward,
+    dimensions,
+    links,
     range_single: map => {
       const result = RangeSingle(api, map)
       dimensions.push(result)
@@ -277,7 +277,30 @@ module.exports = identity => {
   }
   api.refcount = RefCount(api)
   dimensions.push(api.refcount)
-  api.refcount.on('filter changed', p => onfiltered(p))
+  api.refcount.on('link changed', p => onfiltered(p))
+  api.refcount.on('ref changed', async ({ bitindex, put, del }) => {
+    if (put.length == 0 && del.length == 0) return
+
+    const changes = { put: [], del: [] }
+
+    for (const i of del) {
+      linkbits[bitindex.offset][i] |= bitindex.one
+      if (linkbits.only(i, bitindex.offset, bitindex.one)
+        && filterbits.zero(i))
+        changes.del.push(i2d(i))
+    }
+    for (const i of put) {
+      if (linkbits.only(i, bitindex.offset, bitindex.one)
+        && filterbits.zero(i))
+        changes.put.push(i2d(i))
+      linkbits[bitindex.offset][i] &= ~bitindex.one
+    }
+
+    await hub.emit('ref changed', { bitindex, put, del })
+
+    if (changes.put.length > 0 || changes.del.length > 0)
+      await hub.emit('selection changed', changes)
+  })
   api.refcount.on('trace', p => hub.emit('trace', p))
   const iterate = fn => function*() {
     const iterator = index[Symbol.iterator]()

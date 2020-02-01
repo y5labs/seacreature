@@ -27,7 +27,7 @@ module.exports = (cube, map) => {
             || (!config.continuousdecrement && current === 1))
             linkdiff.del.push(cube.i2id(index))
         }
-        hub.emit('trace', {
+        await hub.emit('trace', {
           op: '- link',
           source: api.source.print(),
           target: cube.print(),
@@ -53,7 +53,7 @@ module.exports = (cube, map) => {
             || (!config.continuousdecrement && current === 0))
             linkdiff.put.push(cube.i2id(index))
         }
-        hub.emit('trace', {
+        await hub.emit('trace', {
           op: '+ link',
           source: api.source.print(),
           target: cube.print(),
@@ -63,11 +63,12 @@ module.exports = (cube, map) => {
         })
       }
     }
-    await hub.emit('link changed', {
-      bitindex,
-      put: Array.from(indexdiff.put),
-      del: Array.from(indexdiff.del)
-    })
+    if (config.publishfromlinkfilter)
+      await hub.emit('link changed', {
+        bitindex,
+        put: Array.from(indexdiff.put),
+        del: Array.from(indexdiff.del)
+      })
     return {
       indexdiff,
       linkdiff

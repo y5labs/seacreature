@@ -13,7 +13,7 @@ module.exports = cube => {
       const current = filterindex.get(index)
       if (current == 0) diff.del.add(index)
       filterindex.set(index, current - 1)
-      hub.emit('trace', {
+      await hub.emit('trace', {
         op: '- ref',
         target: cube.print(),
         index: cube.i2id(index),
@@ -28,18 +28,28 @@ module.exports = cube => {
       }
       const next = config.limittozero ? Math.min(current + 1, 0) : current + 1
       filterindex.set(index, next)
-      hub.emit('trace', {
+      await hub.emit('trace', {
         op: '+ ref',
         target: cube.print(),
         index: cube.i2id(index),
         current: next
       })
     }
-    await hub.emit('link changed', {
-      bitindex,
-      put: Array.from(diff.put),
-      del: Array.from(diff.del)
-    })
+    if (config.publishfromrefcount)
+      await hub.emit('link changed', {
+        bitindex,
+        put: Array.from(diff.put),
+        del: Array.from(diff.del)
+      })
+    // await hub.emit('ref changed', {
+    //   bitindex,
+    //   put: Array.from(diff.put),
+    //   del: Array.from(diff.del)
+    // })
+    return {
+      put: Array.from(diff.put, cube.i2id),
+      del: Array.from(diff.del, cube.i2id)
+    }
   }
   api.bitindex = bitindex
   api.filterindex = filterindex
