@@ -1,5 +1,6 @@
 const SparseArray = require('./sparsearray')
 const Hub = require('../lib/hub')
+const config = require('./config')
 
 module.exports = cube => {
   const hub = Hub()
@@ -25,12 +26,13 @@ module.exports = cube => {
         diff.del.delete(index)
         diff.put.add(index)
       }
-      filterindex.set(index, Math.min(current + 1, 0))
+      const next = config.limittozero ? Math.min(current + 1, 0) : current + 1
+      filterindex.set(index, next)
       hub.emit('trace', {
         op: '+ ref',
         target: cube.print(),
         index: cube.i2id(index),
-        current: Math.min(current + 1, 0)
+        current: next
       })
     }
     await hub.emit('link changed', {

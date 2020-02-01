@@ -10,27 +10,32 @@ const LinkMultiple = require('./link_multiple')
 const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
+const config = require('./config')
 
-const visit_links = async (initial, payload, fn) => {
-  // const seen = new Set()
-  // const unseen = new Map()
-  // unseen.set(initial, payload)
-  // while (unseen.size > 0) {
-  //   const tosee = Array.from(unseen.entries())
-  //   unseen.clear()
-  //   for (const [source, params] of tosee) seen.add(source)
-  //   for (const [source, params] of tosee) {
-  //     for (const [target, dimension] of source.forward.entries()) {
-  //       if (seen.has(target)) continue
-  //       const result = await fn(source, target, dimension, params, seen.has(target))
-  //       unseen.set(target, result)
-  //     }
-  //   }
-  // }
-
-  for (const [target, dimension] of initial.forward.entries())
-    await fn(initial, target, dimension, payload)
-}
+const visit_links = config.propagategraph ?
+  async (initial, payload, fn) => {
+    const seen = new Set()
+    const unseen = new Map()
+    unseen.set(initial, payload)
+    while (unseen.size > 0) {
+      const tosee = Array.from(unseen.entries())
+      unseen.clear()
+      for (const [source, params] of tosee) seen.add(source)
+      for (const [source, params] of tosee) {
+        for (const [target, dimension] of source.forward.entries()) {
+          if (!config.dolastlink && seen.has(target)) continue
+          if (config.handleinitial && target === initial) continue
+          const result = await fn(source, target, dimension, params, seen.has(target))
+          if (config.dolastlink && seen.has(target)) continue
+          unseen.set(target, result)
+        }
+      }
+    }
+  }
+  : async (initial, payload, fn) => {
+    for (const [target, dimension] of initial.forward.entries())
+      await fn(initial, target, dimension, payload)
+  }
 
 module.exports = identity => {
   const hub = Hub()
@@ -52,14 +57,6 @@ module.exports = identity => {
 
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
-
-    // console.log(
-    //   '  cube filtered',
-    //   put.length.toString().padStart(5, ' ') + ' ↑',
-    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   api.print(),
-    //   { bitindex, put, del }
-    // )
 
     const changes = { put: [], del: [] }
     const linkchanges = { put: [], del: [] }
@@ -94,14 +91,6 @@ module.exports = identity => {
   const onlinkchanged = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
 
-    // console.log(
-    //   '  cube filtered',
-    //   put.length.toString().padStart(5, ' ') + ' ↑',
-    //   del.length.toString().padStart(5, ' ') + ' ↓   ',
-    //   api.print(),
-    //   { bitindex, put, del }
-    // )
-
     const changes = { put: [], del: [] }
     const linkchanges = { put: [], del: [] }
 
@@ -130,8 +119,9 @@ module.exports = identity => {
 
     if (changes.put.length > 0 || changes.del.length > 0)
       await hub.emit('selection changed', changes)
-    if (linkchanges.put.length > 0 || linkchanges.del.length > 0)
-      await hub.emit('update link selection', linkchanges)
+    if (config.publishlinkchanges)
+      if (linkchanges.put.length > 0 || linkchanges.del.length > 0)
+        await hub.emit('update link selection', linkchanges)
   }
 
   hub.on('update link selection', async params => {
@@ -234,9 +224,14 @@ module.exports = identity => {
         }
       }
       await hub.emit('selection changed', changes)
-      // await hub.emit('update link selection', linkchanges)
-      for (const [cube, link] of forward.entries()) {
-        link(linkchanges)
+      if (config.batchgraph)
+        await hub.emit('update link selection', linkchanges)
+      else {
+        for (const [cube, link] of forward.entries()) {
+          const { indexdiff } = await link(linkchanges)
+          if (config.batchrefcounts)
+            cube.refcount(indexdiff)
+        }
       }
     },
     batch: async ({ put = [], del = [] }) => {

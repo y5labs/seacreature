@@ -1,5 +1,6 @@
 const SparseArray = require('./sparsearray')
 const Hub = require('../lib/hub')
+const config = require('./config')
 
 module.exports = (cube, map) => {
   const _set = new Map()
@@ -22,8 +23,10 @@ module.exports = (cube, map) => {
         if (node.count <= 0) {
           filterindex.set(index, current - 1)
           if (current === 1) indexdiff.del.add(index)
+          if ((config.continuousdecrement && current <= 1)
+            || (!config.continuousdecrement && current === 1))
+            linkdiff.del.push(cube.i2id(index))
         }
-        linkdiff.del.push(cube.i2id(index))
         hub.emit('trace', {
           op: '- link',
           source: api.source.print(),
@@ -46,8 +49,10 @@ module.exports = (cube, map) => {
             indexdiff.put.add(index)
           }
           filterindex.set(index, current + 1)
+          if ((config.continuousdecrement && current <= 0)
+            || (!config.continuousdecrement && current === 0))
+            linkdiff.put.push(cube.i2id(index))
         }
-        linkdiff.put.push(cube.i2id(index))
         hub.emit('trace', {
           op: '+ link',
           source: api.source.print(),
