@@ -1,12 +1,12 @@
 module.exports = {
   continuousdecrement: false,
-  batchgraph: true,
+  batchgraph: false,
   batchrefcounts: false,
-  propagategraph: true,
+  propagategraph: false,
   dolastlink: false,
   handleinitial: false,
-  publishfromlinkchange: true,
+  publishfromlinkchange: false,
   publishfromlinkfilter: false,
   publishfromrefcount: false,
-  limittozero: true
+  limittozero: false
 }
