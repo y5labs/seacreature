@@ -4,30 +4,29 @@ const config = require('./config')
 
 module.exports = cube => {
   const hub = Hub()
-  const bitindex = cube.linkbits.add()
+  const bitindex = cube.filterbits.add()
   const filterindex = new SparseArray()
 
   const api = async ({ put = [], del = [] }) => {
     const diff = { put: new Set(), del: new Set() }
     for (const index of del) {
       const current = filterindex.get(index)
-      if (current == 0) diff.del.add(index)
-      filterindex.set(index, current - 1)
+      if (current != 0) continue
+      diff.del.add(index)
+      filterindex.set(index, 1)
       await hub.emit('trace', {
         op: '- ref',
         target: cube.print(),
         index: cube.i2id(index),
-        current: current - 1
+        current: current + 1
       })
     }
     for (const index of put) {
       const current = filterindex.get(index)
-      if (current == -1) {
-        diff.del.delete(index)
-        diff.put.add(index)
-      }
-      const next = config.limittozero ? Math.min(current + 1, 0) : current + 1
-      filterindex.set(index, next)
+      if (current != 1) continue
+      diff.del.delete(index)
+      diff.put.add(index)
+      filterindex.set(index, 0)
       await hub.emit('trace', {
         op: '+ ref',
         target: cube.print(),
@@ -35,21 +34,11 @@ module.exports = cube => {
         current: next
       })
     }
-    if (config.publishfromrefcount)
-      await hub.emit('link changed', {
-        bitindex,
-        put: Array.from(diff.put),
-        del: Array.from(diff.del)
-      })
-    // await hub.emit('ref changed', {
-    //   bitindex,
-    //   put: Array.from(diff.put),
-    //   del: Array.from(diff.del)
-    // })
-    return {
-      put: Array.from(diff.put, cube.i2id),
-      del: Array.from(diff.del, cube.i2id)
-    }
+    await hub.emit('filter changed', {
+      bitindex,
+      put: Array.from(diff.put),
+      del: Array.from(diff.del)
+    })
   }
   api.bitindex = bitindex
   api.filterindex = filterindex
@@ -68,9 +57,9 @@ module.exports = cube => {
       filterindex.set(index, 0)
     })
     for (const i of diff.del)
-      cube.linkbits[bitindex.offset][i] |= bitindex.one
+      cube.filterbits[bitindex.offset][i] |= bitindex.one
     for (const i of diff.put)
-      cube.linkbits[bitindex.offset][i] &= ~bitindex.one
+      cube.filterbits[bitindex.offset][i] &= ~bitindex.one
     hub.emit('batch', { put, del, diff })
     return diff
   }

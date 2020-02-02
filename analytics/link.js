@@ -8,24 +8,22 @@ module.exports = (cube, map) => {
   const nulls = new Set()
 
   const hub = Hub()
-  const bitindex = cube.linkbits.add()
+  const bitindex = cube.filterbits.add()
   const filterindex = new SparseArray()
 
   const api = async ({ put = [], del = [] }) => {
-    const indexdiff = { put: new Set(), del: new Set() }
-    const linkdiff = { put: [], del: [] }
+    const diff = { put: new Set(), del: new Set() }
     for (const key of del) {
       if (!_set.has(key)) continue
       const node = _set.get(key)
-      node.count--
+      node.count++
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
-        if (node.count <= 0) {
-          filterindex.set(index, current - 1)
-          if (current === 1) indexdiff.del.add(index)
-          if ((config.continuousdecrement && current <= 1)
-            || (!config.continuousdecrement && current === 1))
-            linkdiff.del.push(cube.i2id(index))
+        if (node.count > 0) {
+          if (current === 0) {
+            diff.del.add(index)
+          }
+          filterindex.set(index, current + 1)
         }
         await hub.emit('trace', {
           op: '- link',
@@ -40,18 +38,15 @@ module.exports = (cube, map) => {
     for (const key of put) {
       if (!_set.has(key)) continue
       const node = _set.get(key)
-      node.count++
+      node.count--
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
-        if (node.count <= 1) {
+        if (node.count <= 0) {
           if (current === 0) {
-            indexdiff.del.delete(index)
-            indexdiff.put.add(index)
+            diff.del.delete(index)
+            diff.put.add(index)
           }
-          filterindex.set(index, current + 1)
-          if ((config.continuousdecrement && current <= 0)
-            || (!config.continuousdecrement && current === 0))
-            linkdiff.put.push(cube.i2id(index))
+          filterindex.set(index, current - 1)
         }
         await hub.emit('trace', {
           op: '+ link',
@@ -63,16 +58,7 @@ module.exports = (cube, map) => {
         })
       }
     }
-    if (config.publishfromlinkfilter)
-      await hub.emit('link changed', {
-        bitindex,
-        put: Array.from(indexdiff.put),
-        del: Array.from(indexdiff.del)
-      })
-    return {
-      indexdiff,
-      linkdiff
-    }
+    return diff
   }
   api.lookup = key =>
     !_set.has(key) ? []
@@ -82,7 +68,7 @@ module.exports = (cube, map) => {
   api.shownulls = async () => {
     if (shownulls) return
     shownulls = true
-    await hub.emit('link changed', {
+    await hub.emit('filter changed', {
       bitindex,
       del: [],
       put: Array.from(nulls.values())
@@ -91,7 +77,7 @@ module.exports = (cube, map) => {
   api.hidenulls = async () => {
     if (!shownulls) return
     shownulls = false
-    await hub.emit('link changed', {
+    await hub.emit('filter changed', {
       bitindex,
       del: Array.from(nulls.values()),
       put: []
@@ -137,16 +123,15 @@ module.exports = (cube, map) => {
         })
         const node = _set.get(key)
         node.indicies.add(index)
-        count++
+        count--
       }
       if (count > 0) diff.put.push(index)
-      // filterindex.set(index, count)
       filterindex.set(index, 0)
     })
     for (const i of diff.del)
-      cube.linkbits[bitindex.offset][i] |= bitindex.one
+      cube.filterbits[bitindex.offset][i] |= bitindex.one
     for (const i of diff.put)
-      cube.linkbits[bitindex.offset][i] &= ~bitindex.one
+      cube.filterbits[bitindex.offset][i] &= ~bitindex.one
     hub.emit('batch', { put, del, diff })
     return diff
   }

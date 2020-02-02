@@ -1,11 +1,11 @@
 const SparseArray = require('./sparsearray')
 const { BitArray } = require('./bitarray')
-const RefCount = require('./refcount')
 const RangeSingle = require('./range_single')
 const RangeMultiple = require('./range_multiple')
 const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
 const Link = require('./link')
+const LinkFilter = require('./linkfilter')
 const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
@@ -20,9 +20,6 @@ module.exports = identity => {
   const dimensions = []
 
   const forward = new Map()
-  const linkbits = new BitArray()
-  const linkcount = new SparseArray()
-  const links = []
 
   const i2d = i => data.get(index.get(i))
   const i2id = i => index.get(i)
@@ -36,21 +33,13 @@ module.exports = identity => {
     const linkchanges = { put: [], del: [] }
 
     for (const i of del) {
-      const id = i2id(i)
       filterbits[bitindex.offset][i] |= bitindex.one
-      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
-        linkchanges.del.push(id)
-        if (linkbits.zero(i))
-          changes.del.push(id2d(id))
-      }
+      if (filterbits.only(i, bitindex.offset, bitindex.one))
+        changes.del.push(i2d(i))
     }
     for (const i of put) {
-      const id = i2id(i)
-      if (filterbits.only(i, bitindex.offset, bitindex.one)) {
-        linkchanges.put.push(id)
-        if (linkbits.zero(i))
-          changes.put.push(id2d(id))
-      }
+      if (filterbits.only(i, bitindex.offset, bitindex.one))
+        changes.put.push(i2d(i))
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
@@ -58,44 +47,6 @@ module.exports = identity => {
 
     if (changes.put.length > 0 || changes.del.length > 0)
       await hub.emit('selection changed', changes)
-    if (linkchanges.put.length > 0 || linkchanges.del.length > 0)
-      await hub.emit('update link selection', linkchanges)
-  }
-
-  const onlinkchanged = async ({ bitindex, put, del }) => {
-    if (put.length == 0 && del.length == 0) return
-
-    const changes = { put: [], del: [] }
-    const linkchanges = { put: [], del: [] }
-
-    for (const i of del) {
-      const id = i2id(i)
-      linkbits[bitindex.offset][i] |= bitindex.one
-      if (linkbits.only(i, bitindex.offset, bitindex.one)) {
-        linkchanges.del.push(id)
-        if (filterbits.zero(i)) {
-          changes.del.push(id2d(id))
-        }
-      }
-    }
-    for (const i of put) {
-      const id = i2id(i)
-      if (linkbits.only(i, bitindex.offset, bitindex.one)) {
-        linkchanges.put.push(id)
-        if (filterbits.zero(i)) {
-          changes.put.push(id2d(id))
-        }
-      }
-      linkbits[bitindex.offset][i] &= ~bitindex.one
-    }
-
-    await hub.emit('link changed', { bitindex, put, del })
-
-    if (changes.put.length > 0 || changes.del.length > 0)
-      await hub.emit('selection changed', changes)
-    if (config.publishfromlinkchange)
-      if (linkchanges.put.length > 0 || linkchanges.del.length > 0)
-        await hub.emit('update link selection', linkchanges)
   }
 
   hub.on('update link selection', async payload => {
@@ -139,12 +90,9 @@ module.exports = identity => {
     on: (...args) => hub.on(...args),
     length: () => index.length(),
     filterbits,
-    linkbits,
-    linkcount,
     index,
     forward,
     dimensions,
-    links,
     range_single: map => {
       const result = RangeSingle(api, map)
       dimensions.push(result)
@@ -193,7 +141,7 @@ module.exports = identity => {
         throw new Error('Cubes are already linked')
       const dimension = Link(api, map)
       dimensions.push(dimension)
-      dimension.on('link changed', p => onlinkchanged(p))
+      dimension.on('filter changed', p => onfiltered(p))
       dimension.on('trace', p => hub.emit('trace', p))
       source.forward.set(api, dimension)
       dimension.source = source
@@ -208,20 +156,14 @@ module.exports = identity => {
         linkchanges.del.push(i2id(i))
       }
       for (const [i, d] of put) {
-        if (filterbits.zero(i) && linkbits.zero(i)) {
+        if (filterbits.zero(i)) {
           changes.put.push(d)
           linkchanges.put.push(i2id(i))
         }
       }
       await hub.emit('selection changed', changes)
-      if (config.batchgraph)
-        await hub.emit('update link selection', linkchanges)
-      else {
-        for (const [cube, link] of forward.entries()) {
-          const { indexdiff } = await link(linkchanges)
-          if (config.batchrefcounts)
-            cube.refcount(indexdiff)
-        }
+      for (const [cube, link] of forward.entries()) {
+        const diff = await link(linkchanges)
       }
     },
     batch: async ({ put = [], del = [] }) => {
@@ -240,58 +182,27 @@ module.exports = identity => {
         data.set(id, d)
       }
       const indicies = index.batch({ put: put_ids, del: del_ids })
-      linkcount.length(Math.max(...indicies.put) + 1)
       const result = {
         put: indicies.put.map(i => {
-          linkcount.set(i, 0)
           lookup.set(i2id(i), i)
           return [i, i2d(i)]
         }),
         del: indicies.del.map((i, index) => {
-          linkcount.set(i, null)
           lookup.delete(i2id(i))
           return [i, del[index]]
         })
       }
       filterbits.lengthen(index.length())
-      linkbits.lengthen(index.length())
-      for (const i of indicies.put) {
-        filterbits.clear(i)
-        linkbits.clear(i)
-      }
+      for (const i of indicies.put) filterbits.clear(i)
       for (const d of dimensions) d.batch(indicies, put, del)
-      for (const l of links) l.batch(indicies, put, del)
       await hub.emit('batch', { indicies, put, del })
       return result
     }
   }
-  api.refcount = RefCount(api)
-  dimensions.push(api.refcount)
-  api.refcount.on('link changed', p => onfiltered(p))
-  api.refcount.on('ref changed', async ({ bitindex, put, del }) => {
-    if (put.length == 0 && del.length == 0) return
-
-    const changes = { put: [], del: [] }
-
-    for (const i of del) {
-      linkbits[bitindex.offset][i] |= bitindex.one
-      if (linkbits.only(i, bitindex.offset, bitindex.one)
-        && filterbits.zero(i))
-        changes.del.push(i2d(i))
-    }
-    for (const i of put) {
-      if (linkbits.only(i, bitindex.offset, bitindex.one)
-        && filterbits.zero(i))
-        changes.put.push(i2d(i))
-      linkbits[bitindex.offset][i] &= ~bitindex.one
-    }
-
-    await hub.emit('ref changed', { bitindex, put, del })
-
-    if (changes.put.length > 0 || changes.del.length > 0)
-      await hub.emit('selection changed', changes)
-  })
-  api.refcount.on('trace', p => hub.emit('trace', p))
+  api.linkfilter = LinkFilter(api)
+  dimensions.push(api.linkfilter)
+  api.linkfilter.on('filter changed', p => onfiltered(p))
+  api.linkfilter.on('trace', p => hub.emit('trace', p))
   const iterate = fn => function*() {
     const iterator = index[Symbol.iterator]()
     let i = iterator.next()
@@ -300,7 +211,7 @@ module.exports = identity => {
       i = iterator.next()
     }
   }
-  api.highlighted = iterate(i => filterbits.zero(i) && linkbits.zero(i))
+  api.highlighted = iterate(i => filterbits.zero(i))
   api.filtered = iterate(i => filterbits.zero(i))
   api.unfiltered = iterate(i => true)
   return api

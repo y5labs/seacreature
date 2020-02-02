@@ -21,11 +21,10 @@ export default component({
           const cube = state.cube[`${id}s`]
           const i = cube.id2i(s[0])
           const filterbit = cube.filterbits[0][i].toString(2)
-          const linkbit = cube.linkbits[0][i].toString(2)
-          if (filterbit > 0 || linkbit > 0)
-            return h('li', `${s[1].Id} (${cube.refcount.filterindex.get(i)}, ${filterbit}, ${linkbit})`)
+          if (filterbit > 0)
+            return h('li', `${s[1].Id} (${cube.linkfilter.filterindex.get(i)}, ${filterbit})`)
           else
-            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${cube.refcount.filterindex.get(i)}, ${filterbit}, ${linkbit})`)])
+            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${cube.linkfilter.filterindex.get(i)}, ${filterbit})`)])
         }))
     ])
     const link = (from, to) => {
