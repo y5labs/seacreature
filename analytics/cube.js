@@ -5,8 +5,7 @@ const RangeSingle = require('./range_single')
 const RangeMultiple = require('./range_multiple')
 const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
-const LinkSingle = require('./link_single')
-const LinkMultiple = require('./link_multiple')
+const Link = require('./link')
 const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
@@ -189,25 +188,16 @@ module.exports = identity => {
       result.on('trace', p => hub.emit('trace', p))
       return result
     },
-    // link_single: (map) => {
-    //   const result = LinkSingle(api, map)
-    //   dimensions.push(result)
-    //   result.on('link changed', p => onlinkchanged(p))
-    //   result.on('trace', p => hub.emit('trace', p))
-    //   return result
-    // },
-    link_multiple: map => {
-      const result = LinkMultiple(api, map)
-      dimensions.push(result)
-      result.on('link changed', p => onlinkchanged(p))
-      result.on('trace', p => hub.emit('trace', p))
-      return result
-    },
-    link_to: (target, dimension) => {
-      if (forward.has(target))
+    link: (source, map) => {
+      if (source.forward.has(api))
         throw new Error('Cubes are already linked')
-      forward.set(target, dimension)
-      dimension.source = api
+      const dimension = Link(api, map)
+      dimensions.push(dimension)
+      dimension.on('link changed', p => onlinkchanged(p))
+      dimension.on('trace', p => hub.emit('trace', p))
+      source.forward.set(api, dimension)
+      dimension.source = source
+      return dimension
     },
     batch_calculate_selection_change: async ({ put, del }) => {
       if (put.length == 0 && del.length == 0) return

@@ -33,17 +33,22 @@ inject('pod', ({ hub, state }) => {
     }
 
     c.suppliers = Cube(s => s.Id)
-    c.supplier_byid = c.suppliers.range_single(s => s.Id)
-    c.supplier_byproduct = c.suppliers.link_multiple(s => c.product_bysupplier.lookup(s.Id))
-
     c.products = Cube(p => p.Id)
-    c.product_byid = c.products.range_single(p => p.Id)
-    c.product_bysupplier = c.products.link_multiple(p => [p.SupplierId])
-    c.product_byorder = c.products.link_multiple(p => c.order_byproduct.lookup(p.Id))
-
     c.orders = Cube(o => o.Id)
+
+    c.supplier_byid = c.suppliers.range_single(s => s.Id)
+    c.supplier_byproduct = c.suppliers.link(c.products,
+      s => c.product_bysupplier.lookup(s.Id))
+
+    c.product_byid = c.products.range_single(p => p.Id)
+    c.product_bysupplier = c.products.link(c.suppliers,
+      p => [p.SupplierId])
+    c.product_byorder = c.products.link(c.orders,
+      p => c.order_byproduct.lookup(p.Id))
+
     c.order_byid = c.orders.range_single(o => o.Id)
-    c.order_byproduct = c.orders.link_multiple(o => o.ProductIds)
+    c.order_byproduct = c.orders.link(c.products,
+      o => o.ProductIds)
 
     c.products.link_to(c.suppliers, c.supplier_byproduct)
     c.suppliers.link_to(c.products, c.product_bysupplier)
