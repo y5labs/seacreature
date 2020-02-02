@@ -10,6 +10,7 @@ const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
 const config = require('./config')
+const sleep = require('../lib/sleep')
 
 module.exports = identity => {
   const hub = Hub()
@@ -20,6 +21,7 @@ module.exports = identity => {
   const dimensions = []
 
   const forward = new Map()
+  const backward = new Map()
 
   const i2d = i => data.get(index.get(i))
   const i2id = i => index.get(i)
@@ -30,6 +32,7 @@ module.exports = identity => {
     if (put.length == 0 && del.length == 0) return
 
     const diff = { put: [], del: [] }
+    const candidates = []
 
     for (const i of del) {
       filterbits[bitindex.offset][i] |= bitindex.one
@@ -39,6 +42,8 @@ module.exports = identity => {
     for (const i of put) {
       if (filterbits.only(i, bitindex.offset, bitindex.one))
         diff.put.push(i)
+      if (filterbits.onlyExcept(i, api.linkfilter.bitindex.offset, ~api.linkfilter.bitindex.one, bitindex.offset, bitindex.one))
+        candidates.push(i)
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
@@ -54,42 +59,90 @@ module.exports = identity => {
         del: diff.del.map(i2id)
       })
     }
+    if (candidates.length > 0)
+      await hub.emit('garbage collection', candidates)
   }
 
   hub.on('propagate links', async payload => {
+    // ref count ++
     for (const [target, dimension] of api.forward.entries()) {
       const diff = await dimension({ del: payload.del })
       if (diff.del.length == 0) continue
       await target.linkfilter(diff)
-      console.log(diff)
     }
 
-    // const seen = new Set()
-    // const unseen = new Map()
-    // unseen.set(api, payload)
-    // while (unseen.size > 0) {
-    //   const tosee = Array.from(unseen.entries())
-    //   unseen.clear()
-    //   for (const [source, params] of tosee) seen.add(source)
-    //   for (const [source, params] of tosee) {
-    //     for (const [target, dimension] of source.forward.entries()) {
-    //       if (seen.has(target)) continue
-    //       const diff = await dimension({ del: params.del })
-    //       console.log(
-    //         api.print(),
-    //         source.print(),
-    //         target.print(),
-    //         params,
-    //         diff
-    //       )
-    //       if (diff.del.length == 0) continue
-    //       await target.linkfilter(diff)
-    //       unseen.set(target, {
-    //         del: diff.del.map(target.i2id)
-    //       })
-    //     }
-    //   }
-    // }
+    for (const [target, dimension] of api.forward.entries()) {
+      const diff = await dimension({ put: payload.put })
+      if (diff.put.length == 0) continue
+      await target.linkfilter(diff)
+    }
+  })
+
+  hub.on('garbage collection', async candidates => {
+    await hub.emit('trace', { op: 'start gc' })
+    const seen = new Map()
+    const push = (cube, i) => {
+      if (!seen.has(cube)) seen.set(cube, new Set())
+      seen.get(cube).add(i)
+    }
+    const pop = (cube, i) => {
+      seen.get(cube).delete(i)
+    }
+    const has = (cube, i) => {
+      if (!seen.has(cube)) return false
+      return seen.get(cube).has(i)
+    }
+    const cancollect = async (cube, i) => {
+      await hub.emit('trace', {
+        op: 'gc cube',
+        target: cube.print(),
+        id: cube.i2id(i),
+        desc: 'test' })
+      await sleep(200)
+      push(cube, i)
+      for (const [source, dimension] of cube.backward.entries()) {
+        seenindicies = seen.get(source)
+        // only follow refs
+        if (dimension.filterindex.get(i) != 0) continue
+        await hub.emit('trace', {
+          op: 'gc dimension',
+          source: cube.print(),
+          target: source.print(),
+          id: cube.i2id(i),
+          desc: 'check' })
+        for (const id of Array.from(dimension.backward.get(i).keys())
+            .filter(id => dimension.forward.get(id).count == 0)) {
+          const sourceindex = source.id2i(id)
+          if (has(source, sourceindex)) continue
+          const isroot = !source.filterbits.zeroExcept(sourceindex, source.linkfilter.bitindex.offset, ~source.linkfilter.bitindex.one)
+          if (isroot) {
+            await hub.emit('trace', {
+              op: 'gc cube',
+              target: source.print(),
+              id: source.i2id(sourceindex),
+              desc: 'is root' })
+            return false
+          }
+          if (await cancollect(source, sourceindex)) {
+            await hub.emit('trace', {
+              op: 'gc cube',
+              target: source.print(),
+              id: source.i2id(sourceindex),
+              desc: 'prop collect' })
+            await source.linkfilter({ put: [sourceindex] })
+          }
+        }
+      }
+      pop(cube, i)
+      return true
+    }
+
+    for (const i of candidates) {
+      if (await cancollect(api, i)) {
+        await api.linkfilter({ put: [i] })
+      }
+    }
+    await hub.emit('trace', { op: 'finish gc' })
   })
 
   const api = {
@@ -104,6 +157,7 @@ module.exports = identity => {
     filterbits,
     index,
     forward,
+    backward,
     dimensions,
     range_single: map => {
       const result = RangeSingle(api, map)
@@ -156,6 +210,7 @@ module.exports = identity => {
       dimension.on('filter changed', p => onfiltered(p))
       dimension.on('trace', p => hub.emit('trace', p))
       source.forward.set(api, dimension)
+      api.backward.set(source, dimension)
       dimension.source = source
       return dimension
     },

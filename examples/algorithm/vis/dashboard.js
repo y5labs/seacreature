@@ -28,7 +28,7 @@ export default component({
       const link = state.cube[`${to}_by${from}`]
       const cube = state.cube[`${to}s`]
       return h('td', [
-        h('ul', Array.from(link.set.entries(), ([external, node]) =>
+        h('ul', Array.from(link.forward.entries(), ([external, node]) =>
           Array.from(node.indicies, index =>
             h('li', `${external} (${node.count}) => ${cube.i2id(index)} (${link.filterindex.get(index)})`))))
       ])
@@ -56,6 +56,11 @@ export default component({
       ...state.cube.traces.map(trace => {
         const tracelink = (from, to) => h('td', [
           h('ul', trace
+            .filter(t => t.op == 'gc dimension'
+              && t.source == from[0]
+              && t.target == to[0])
+            .map(t => h('li', `${t.count} ${t.id} ${t.desc}`))),
+          h('ul', trace
             .filter(t => t.op.indexOf('link') != -1
               && t.source == from[0]
               && t.target == to[0])
@@ -63,9 +68,9 @@ export default component({
         ])
         const tracecube = id => h('td', [
           h('ul', trace
-            .filter(t => t.op.indexOf('ref') != -1
+            .filter(t => t.op == 'gc cube'
               && t.target == id)
-            .map(t => h('li', `${t.count} ${t.op[0]} ${t.index} (${t.current})`)))
+            .map(t => h('li', `${t.count} ${t.id} ${t.desc}`)))
         ])
         return h('tr', [
           tracecube('o'),

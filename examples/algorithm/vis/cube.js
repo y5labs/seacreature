@@ -53,14 +53,24 @@ inject('pod', ({ hub, state }) => {
       c.traces.push(current)
       current = []
     })
-    const increment = p => {
+    const rec = async p => {
+      if (p.op == 'finish gc') {
+        console.log(p.op)
+        await hub.emit('push trace')
+        return
+      }
+      if (p.op == 'start gc') {
+        console.log(p.op)
+        await hub.emit('push trace')
+        return
+      }
       p.count = count
       count++
       current.push(p)
     }
-    c.suppliers.on('trace', increment)
-    c.products.on('trace', increment)
-    c.orders.on('trace', increment)
+    c.suppliers.on('trace', rec)
+    c.products.on('trace', rec)
+    c.orders.on('trace', rec)
 
     const orders_indicies = await c.orders.batch({ put: data.Orders })
     const products_indicies = await c.products.batch({ put: data.Products })
