@@ -15,10 +15,10 @@ module.exports = cube => {
       diff.del.add(index)
       filterindex.set(index, 1)
       await hub.emit('trace', {
-        op: '- ref',
+        op: '+ ref',
         target: cube.print(),
         index: cube.i2id(index),
-        current: current + 1
+        current: 1
       })
     }
     for (const index of put) {
@@ -28,10 +28,10 @@ module.exports = cube => {
       diff.put.add(index)
       filterindex.set(index, 0)
       await hub.emit('trace', {
-        op: '+ ref',
+        op: '- ref',
         target: cube.print(),
         index: cube.i2id(index),
-        current: next
+        current: 0
       })
     }
     await hub.emit('filter changed', {

@@ -1,7 +1,4 @@
 import component from '../lib/component'
-import objstats from 'seacreature/lib/objstats'
-import numeral from 'numeral'
-import pathie from 'seacreature/lib/pathie'
 
 export default component({
   name: 'dasboard',
@@ -22,9 +19,9 @@ export default component({
           const i = cube.id2i(s[0])
           const filterbit = cube.filterbits[0][i].toString(2)
           if (filterbit > 0)
-            return h('li', `${s[1].Id} (${cube.linkfilter.filterindex.get(i)}, ${filterbit})`)
+            return h('li', `${s[1].Id} (${filterbit})`)
           else
-            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${cube.linkfilter.filterindex.get(i)}, ${filterbit})`)])
+            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${filterbit})`)])
         }))
     ])
     const link = (from, to) => {

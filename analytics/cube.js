@@ -29,55 +29,67 @@ module.exports = identity => {
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
 
-    const changes = { put: [], del: [] }
-    const linkchanges = { put: [], del: [] }
+    const diff = { put: [], del: [] }
 
     for (const i of del) {
       filterbits[bitindex.offset][i] |= bitindex.one
       if (filterbits.only(i, bitindex.offset, bitindex.one))
-        changes.del.push(i2d(i))
+        diff.del.push(i)
     }
     for (const i of put) {
       if (filterbits.only(i, bitindex.offset, bitindex.one))
-        changes.put.push(i2d(i))
+        diff.put.push(i)
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
 
-    if (changes.put.length > 0 || changes.del.length > 0)
-      await hub.emit('selection changed', changes)
+    if (diff.put.length > 0 || diff.del.length > 0) {
+      await hub.emit('selection changed', {
+        put: diff.put.map(i2d),
+        del: diff.del.map(i2d)
+      })
+      await hub.emit('propagate links', {
+        put: diff.put.map(i2id),
+        del: diff.del.map(i2id)
+      })
+    }
   }
 
-  hub.on('update link selection', async payload => {
-    const fn = async (source, target, dimension, params) => {
-      const { indexdiff, linkdiff } = await dimension(params)
-      const refdiff = await target.refcount(indexdiff)
-      return linkdiff
+  hub.on('propagate links', async payload => {
+    for (const [target, dimension] of api.forward.entries()) {
+      const diff = await dimension({ del: payload.del })
+      if (diff.del.length == 0) continue
+      await target.linkfilter(diff)
+      console.log(diff)
     }
-    if (!config.propagategraph) {
-      for (const [target, dimension] of api.forward.entries())
-        await fn(api, target, dimension, payload)
-      return
-    }
-    const seen = new Set()
-    const unseen = new Map()
-    unseen.set(api, payload)
-    while (unseen.size > 0) {
-      const tosee = Array.from(unseen.entries())
-      unseen.clear()
-      for (const [source, params] of tosee) seen.add(source)
-      for (const [source, params] of tosee) {
-        const entries = Array.from(source.forward.entries())
-        for (const [target, dimension] of entries) {
-          if (!config.dolastlink && seen.has(target)) continue
-          if (config.handleinitial && target === api) continue
-          const result = await fn(source, target, dimension, params, entries)
-          if (config.dolastlink && seen.has(target)) continue
-          unseen.set(target, result)
-        }
-      }
-    }
+
+    // const seen = new Set()
+    // const unseen = new Map()
+    // unseen.set(api, payload)
+    // while (unseen.size > 0) {
+    //   const tosee = Array.from(unseen.entries())
+    //   unseen.clear()
+    //   for (const [source, params] of tosee) seen.add(source)
+    //   for (const [source, params] of tosee) {
+    //     for (const [target, dimension] of source.forward.entries()) {
+    //       if (seen.has(target)) continue
+    //       const diff = await dimension({ del: params.del })
+    //       console.log(
+    //         api.print(),
+    //         source.print(),
+    //         target.print(),
+    //         params,
+    //         diff
+    //       )
+    //       if (diff.del.length == 0) continue
+    //       await target.linkfilter(diff)
+    //       unseen.set(target, {
+    //         del: diff.del.map(target.i2id)
+    //       })
+    //     }
+    //   }
+    // }
   })
 
   const api = {

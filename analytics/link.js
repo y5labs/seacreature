@@ -19,14 +19,14 @@ module.exports = (cube, map) => {
       node.count++
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
-        if (node.count > 0) {
-          if (current === 0) {
+        if (node.count >= 0) {
+          if (current === -1) {
             diff.del.add(index)
           }
           filterindex.set(index, current + 1)
         }
         await hub.emit('trace', {
-          op: '- link',
+          op: '+ link',
           source: api.source.print(),
           target: cube.print(),
           key,
@@ -49,7 +49,7 @@ module.exports = (cube, map) => {
           filterindex.set(index, current - 1)
         }
         await hub.emit('trace', {
-          op: '+ link',
+          op: '- link',
           source: api.source.print(),
           target: cube.print(),
           key,
@@ -58,7 +58,10 @@ module.exports = (cube, map) => {
         })
       }
     }
-    return diff
+    return {
+      put: Array.from(diff.put),
+      del: Array.from(diff.del)
+    }
   }
   api.lookup = key =>
     !_set.has(key) ? []
