@@ -76,12 +76,19 @@ inject('pod', ({ hub, state }) => {
     // state.filters.orderbyid = 'Sue'
     // await c.product_byid('Oranges')
     // state.filters.productbyid = 'Oranges'
-    await c.supplier_byid('Vege Bin')
-    state.filters.supplierbyid = 'Vege Bin'
+    // await c.supplier_byid('Vege Bin')
+    // state.filters.supplierbyid = 'Vege Bin'
     // await c.product_byid(null)
     // delete state.filters.productbyid
     // await c.order_byid(null)
     // delete state.filters.orderbyid
+
+
+    // await c.supplier_byid('Vege Bin')
+    // state.filters.supplierbyid = 'Vege Bin'
+    // await hub.emit('push trace')
+    // await c.supplier_byid(null)
+    // delete state.filters.supplierbyid
 
     await hub.emit('push trace')
   })

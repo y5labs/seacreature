@@ -1,5 +1,11 @@
 module.exports = async (cube, candidates) => {
-  await cube.trace({ op: 'start gc' })
+  if (candidates.length == 0) return
+  await cube.trace({
+    op: 'gc cube',
+    target: cube.print(),
+    id: 'GC',
+    desc: candidates.map(cube.i2id),
+    ref: null })
   const seen = new Map()
   const push = (cube, i) => {
     if (!seen.has(cube)) seen.set(cube, new Set())
@@ -85,14 +91,23 @@ module.exports = async (cube, candidates) => {
   }
 
   for (const i of candidates) {
+    if (cube.filterbits.zero(i)) continue
     if (await cancollect(cube, i)) {
       await cube.trace({
         op: 'gc cube',
         target: cube.print(),
         id: cube.i2id(i),
-        desc: 'cube collect',
+        desc: 'Collect',
         ref: null })
       await cube.linkfilter({ put: [i] })
+    }
+    else {
+      await cube.trace({
+        op: 'gc cube',
+        target: cube.print(),
+        id: cube.i2id(i),
+        desc: 'Ignore',
+        ref: null })
     }
   }
   await cube.trace({ op: 'finish gc' })

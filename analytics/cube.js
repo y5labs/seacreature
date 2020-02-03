@@ -60,32 +60,15 @@ module.exports = identity => {
         del: diff.del.map(i2id)
       }
       for (const [target, dimension] of api.forward.entries()) {
-        const diff = await dimension({ del: payload.del })
-        if (diff.del.length == 0) continue
-        await target.linkfilter({ del: diff.del })
+        const diff = await dimension(payload)
+        if (diff.del.length > 0)
+          await target.linkfilter({ del: diff.del })
+        await GC(target, Array.from(new Set(payload.put.map(i => Array.from(dimension.forward.get(i).indicies.keys())).flat())))
       }
-      if (candidates.length > 0)
-        await GC(api, candidates)
-      for (const [target, dimension] of api.forward.entries()) {
-        const diff = await dimension({ put: payload.put })
-        if (diff.put.length == 0) continue
-        GC(target, diff.put)
-        // await target.linkfilter({ put: diff.put })
-      }
-      // await hub.emit('propagate links', payload)
-      return
     }
     if (candidates.length > 0)
       await GC(api, candidates)
   }
-
-  hub.on('propagate links', async payload => {
-    for (const [target, dimension] of api.forward.entries()) {
-      const diff = await dimension({ put: payload.put })
-      if (diff.put.length == 0) continue
-      // await target.linkfilter({ put: diff.put })
-    }
-  })
 
   const api = {
     i2d,
