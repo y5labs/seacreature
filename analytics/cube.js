@@ -9,9 +9,6 @@ const LinkFilter = require('./linkfilter')
 const GC = require('./gc')
 const text = require('./text')
 const Hub = require('../lib/hub')
-const Mutex = require('../lib/mutex')
-const config = require('./config')
-const sleep = require('../lib/sleep')
 
 module.exports = identity => {
   const hub = Hub()
@@ -80,7 +77,7 @@ module.exports = identity => {
     id2i,
     identity,
     print: () => api.identity.toString().split(' => ')[0],
-    trace: p => hub.emit('trace', p),
+    // trace: p => hub.emit('trace', p),
     on: (...args) => hub.on(...args),
     length: () => index.length(),
     filterbits,
@@ -92,14 +89,14 @@ module.exports = identity => {
       const result = RangeSingle(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
-      result.on('trace', p => hub.emit('trace', p))
+      // result.on('trace', p => hub.emit('trace', p))
       return result
     },
     range_multiple: map => {
       const result = RangeMultiple(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
-      result.on('trace', p => hub.emit('trace', p))
+      // result.on('trace', p => hub.emit('trace', p))
       return result
     },
     range_multiple_text: (map, stemmer) => {
@@ -107,7 +104,7 @@ module.exports = identity => {
       const result = RangeMultiple(api, map_text)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
-      result.on('trace', p => hub.emit('trace', p))
+      // result.on('trace', p => hub.emit('trace', p))
       const search = (lo, hi) => {
         if (lo) lo = stemmer(lo)
         if (hi) hi = stemmer(hi)
@@ -121,14 +118,14 @@ module.exports = identity => {
       const result = SetSingle(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
-      result.on('trace', p => hub.emit('trace', p))
+      // result.on('trace', p => hub.emit('trace', p))
       return result
     },
     set_multiple: map => {
       const result = SetMultiple(api, map)
       dimensions.push(result)
       result.on('filter changed', p => onfiltered(p))
-      result.on('trace', p => hub.emit('trace', p))
+      // result.on('trace', p => hub.emit('trace', p))
       return result
     },
     link: (source, map) => {
@@ -137,7 +134,7 @@ module.exports = identity => {
       const dimension = Link(api, map)
       dimensions.push(dimension)
       dimension.on('filter changed', p => onfiltered(p))
-      dimension.on('trace', p => hub.emit('trace', p))
+      // dimension.on('trace', p => hub.emit('trace', p))
       source.forward.set(api, dimension)
       api.backward.set(source, dimension)
       dimension.source = source
@@ -198,7 +195,7 @@ module.exports = identity => {
   api.linkfilter = LinkFilter(api)
   dimensions.push(api.linkfilter)
   api.linkfilter.on('filter changed', p => onfiltered(p))
-  api.linkfilter.on('trace', p => hub.emit('trace', p))
+  // api.linkfilter.on('trace', p => hub.emit('trace', p))
   const iterate = fn => function*() {
     const iterator = index[Symbol.iterator]()
     let i = iterator.next()
