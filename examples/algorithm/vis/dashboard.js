@@ -70,7 +70,11 @@ export default component({
           h('ul', trace
             .filter(t => t.op == 'gc cube'
               && t.target == id)
-            .map(t => h('li', `${t.count} ${t.id} ${t.desc}`)))
+            .map(t => h('li', `${t.count} ${t.id} ${t.desc}`))),
+          h('ul', trace
+            .filter(t => t.op.indexOf('ref') != -1
+              && t.target == id)
+            .map(t => h('li', `${t.count} ${t.op[0]} ${t.id}`)))
         ])
         return h('tr', [
           tracecube('o'),

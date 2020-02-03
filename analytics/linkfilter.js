@@ -15,9 +15,9 @@ module.exports = cube => {
       diff.del.add(index)
       filterindex.set(index, 1)
       await hub.emit('trace', {
-        op: '+ ref',
+        op: '- ref',
         target: cube.print(),
-        index: cube.i2id(index),
+        id: cube.i2id(index),
         current: 1
       })
     }
@@ -28,9 +28,9 @@ module.exports = cube => {
       diff.put.add(index)
       filterindex.set(index, 0)
       await hub.emit('trace', {
-        op: '- ref',
+        op: '+ ref',
         target: cube.print(),
-        index: cube.i2id(index),
+        id: cube.i2id(index),
         current: 0
       })
     }

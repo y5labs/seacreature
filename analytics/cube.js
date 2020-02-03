@@ -98,10 +98,8 @@ module.exports = identity => {
         target: cube.print(),
         id: cube.i2id(i),
         desc: 'test' })
-      await sleep(200)
       push(cube, i)
       for (const [source, dimension] of cube.backward.entries()) {
-        seenindicies = seen.get(source)
         // only follow refs
         if (dimension.filterindex.get(i) != 0) continue
         await hub.emit('trace', {
@@ -110,27 +108,45 @@ module.exports = identity => {
           target: source.print(),
           id: cube.i2id(i),
           desc: 'check' })
-        for (const id of Array.from(dimension.backward.get(i).keys())
-            .filter(id => dimension.forward.get(id).count == 0)) {
+        const links = Array.from(dimension.backward.get(i).keys())
+        let count = links.length
+        for (const id of links.filter(id => dimension.forward.get(id).count == 0)) {
           const sourceindex = source.id2i(id)
           if (has(source, sourceindex)) continue
           const isroot = !source.filterbits.zeroExcept(sourceindex, source.linkfilter.bitindex.offset, ~source.linkfilter.bitindex.one)
           if (isroot) {
+            count--
             await hub.emit('trace', {
               op: 'gc cube',
               target: source.print(),
               id: source.i2id(sourceindex),
               desc: 'is root' })
-            return false
           }
-          if (await cancollect(source, sourceindex)) {
+          else if (await cancollect(source, sourceindex)) {
+            // await hub.emit('trace', {
+            //   op: 'gc cube',
+            //   target: source.print(),
+            //   id: source.i2id(sourceindex),
+            //   desc: 'prop collect' })
+            // await source.linkfilter({ put: [sourceindex] })
+          }
+          else {
+            count--
             await hub.emit('trace', {
               op: 'gc cube',
               target: source.print(),
               id: source.i2id(sourceindex),
-              desc: 'prop collect' })
-            await source.linkfilter({ put: [sourceindex] })
+              desc: 'cant prop' })
           }
+        }
+        if (count == 0) {
+          await hub.emit('trace', {
+            op: 'gc cube',
+            target: source.print(),
+            id: null,
+            desc: `ref is zero ${count}` })
+          pop(cube, i)
+          return false
         }
       }
       pop(cube, i)
