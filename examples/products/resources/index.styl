@@ -26,12 +26,15 @@ body
   grid-template-rows 3.75rem auto
   padding-bottom 5rem
 
+.cols
+  display flex
+.cols + .cols
+  border-top 1px solid $primary
+
 .box
   padding 0.5rem
   h2
     margin 0
-.box + .box
-  border-top 1px solid $primary
 
 .bar
   display inline-block
@@ -51,3 +54,17 @@ body
 ul
   list-style-type none
   padding-left 1rem
+
+table
+  margin 1rem 0
+  th
+    text-align left
+    font-weight normal
+    vertical-align top
+    padding 0.5rem 3rem 0.5rem 0
+    h2
+      margin 0
+  td
+    padding-right 1rem
+    &.d
+      text-align right

@@ -12,7 +12,6 @@ inject('pod', ({ hub, state }) => {
   hub.on('load cube', async () => {
     if (c) return
     state.cube = c = {}
-    state.filters = {}
     const data = (await Promise.all(
       ['Customers', 'Orders', 'OrderItems', 'Products', 'Suppliers']
       .map(async name => {

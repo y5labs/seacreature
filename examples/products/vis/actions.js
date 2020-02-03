@@ -1,6 +1,13 @@
 import inject from 'seacreature/lib/inject'
 
 inject('pod', ({ hub, state }) => {
+  state.filters = {
+    countrysort: 'position'
+  }
+  hub.on('sort country by', async index => {
+    state.filters.countrysort = index
+    await hub.emit('update')
+  })
   hub.on('filter supplier by country', async country => {
     if (country) {
       await state.cube.supplier_country.hidenulls()
