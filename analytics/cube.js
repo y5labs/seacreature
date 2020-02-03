@@ -61,9 +61,12 @@ module.exports = identity => {
       }
       for (const [target, dimension] of api.forward.entries()) {
         const diff = await dimension(payload)
-        if (diff.del.length > 0)
-          await target.linkfilter({ del: diff.del })
-        await GC(target, Array.from(new Set(payload.put.map(i => Array.from(dimension.forward.get(i).indicies.keys())).flat())))
+        if (diff.del.length > 0) await target.linkfilter({ del: diff.del })
+        await GC(target, Array.from(new Set(payload.put.map(i => {
+          const node = dimension.forward.get(i)
+          if (!node) return []
+          return Array.from(node.indicies.keys())
+        }).flat())))
       }
     }
     if (candidates.length > 0)
