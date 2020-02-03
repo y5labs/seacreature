@@ -13,91 +13,8 @@ const hub = Hub()
 const state = {}
 let c = null
 
-hub.on('filter supplier by country', async country => {
-  if (country) {
-    await state.cube.supplier_country.hidenulls()
-    await state.cube.supplier_country.selectnone()
-    await state.cube.supplier_country({ put: [country] })
-    state.filters.supplierbycountry = country
-  }
-  else {
-    await state.cube.supplier_country.shownulls()
-    await state.cube.supplier_country.selectall()
-    delete state.filters.supplierbycountry
-  }
-  await hub.emit('calculate projections')
-})
-hub.on('filter customer by country', async country => {
-  if (country) {
-    await state.cube.customer_country.hidenulls()
-    await state.cube.customer_country.selectnone()
-    await state.cube.customer_country({ put: [country] })
-    state.filters.customerbycountry = country
-  }
-  else {
-    await state.cube.customer_country.shownulls()
-    await state.cube.customer_country.selectall()
-    delete state.filters.customerbycountry
-  }
-  await hub.emit('calculate projections')
-})
-hub.on('filter supplier by id', async id => {
-  if (id) {
-    await state.cube.supplier_byid(id)
-    state.filters.supplierbyid = id
-  }
-  else {
-    await state.cube.supplier_byid(id)
-    delete state.filters.supplierbyid
-  }
-  await hub.emit('calculate projections')
-})
-hub.on('filter customer by id', async id => {
-  if (id) {
-    await state.cube.customer_byid(id)
-    state.filters.customerbyid = id
-  }
-  else {
-    await state.cube.customer_byid(id)
-    delete state.filters.customerbyid
-  }
-  await hub.emit('calculate projections')
-})
-hub.on('filter product by id', async id => {
-  if (id) {
-    await state.cube.product_byid(id)
-    state.filters.productbyid = id
-  }
-  else {
-    await state.cube.product_byid(id)
-    delete state.filters.productbyid
-  }
-  await hub.emit('calculate projections')
-})
-hub.on('filter order by id', async id => {
-  if (id) {
-    await state.cube.order_byid(id)
-    state.filters.orderbyid = id
-  }
-  else {
-    await state.cube.order_byid(id)
-    delete state.filters.orderbyid
-  }
-  await hub.emit('calculate projections')
-})
-hub.on('filter orderitem by id', async id => {
-  if (id) {
-    await state.cube.orderitem_byid(id)
-    state.filters.orderitembyid = id
-  }
-  else {
-    await state.cube.orderitem_byid(id)
-    delete state.filters.orderitembyid
-  }
-  await hub.emit('calculate projections')
-})
 
-hub.on('load projections', async () => {
+hub.on('load projections 2', async () => {
   // count projections
   state.cube.counts = {
     supplier: { selected: 0, total: 0 },
@@ -337,18 +254,32 @@ const cubes = ['suppliers', 'products', 'orderitems', 'orders', 'customers']
 const print = () => console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).length.toString().padStart(12, ' ')).join(''))
 
 console.log(cubes.map(id => id.padStart(12, ' ')).join(''))
+// print()
+// await state.cube.supplier_country.hidenulls()
+// await state.cube.supplier_country.selectnone()
+// await state.cube.supplier_country({ put: ['France'] })
+// print()
+// await state.cube.customer_country.hidenulls()
+// await state.cube.customer_country.selectnone()
+// await state.cube.customer_country({ put: ['Germany'] })
+// print()
+// await state.cube.product_byid(39)
+// print()
+// await state.cube.supplier_country.shownulls()
+// await state.cube.supplier_country.selectall()
+// print()
+// await state.cube.customer_country.shownulls()
+// await state.cube.customer_country.selectall()
+// print()
+// await state.cube.product_byid(null)
+// print()
+
+
+
 print()
-await hub.emit('filter supplier by country', 'France')
+await state.cube.product_byid(39)
 print()
-await hub.emit('filter customer by country', 'Germany')
-print()
-await hub.emit('filter product by id', 39)
-print()
-await hub.emit('filter supplier by country', null)
-print()
-await hub.emit('filter customer by country', null)
-print()
-await hub.emit('filter product by id', null)
+await state.cube.product_byid(null)
 print()
 
 })()
