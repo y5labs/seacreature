@@ -20,6 +20,10 @@ const router = new Router({
   base: process.env.BASE_URL
 })
 
+window.addEventListener('unhandledrejection', e => {
+  console.error(`Unhandled promise ${event.reason}`, e, e.stack)
+})
+
 // TODO: Support CSRF with Express
 // // Setup axios with CSRF protection
 // import axios from 'axios'

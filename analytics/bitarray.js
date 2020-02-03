@@ -40,7 +40,7 @@ BitArray.prototype.lengthen = function(n) {
 BitArray.prototype.add = function() {
   for (let i = 0, len = this.subarrays; i < len; ++i) {
     const m = this.masks[i]
-    const w = this.width - (32 * i)
+    let w = this.width - (32 * i)
     // isolate the rightmost zero bit and return it as an unsigned int of 32 bits, if NaN or -1, return a 0
     const one = (~m & (m + 1)) >>> 0
 

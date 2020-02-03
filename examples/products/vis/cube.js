@@ -38,6 +38,15 @@ inject('pod', ({ hub, state }) => {
 
     // Supplier — Id, CompanyName, ContactName, City, Country, Phone, Fax
     c.suppliers = Cube(s => s.Id)
+    // Product — Id, ProductName, SupplierId, UnitPrice, Package, IsDiscontinued
+    c.products = Cube(p => p.Id)
+    // Order — Id, OrderDate, CustomerId, TotalAmount, OrderNumber
+    c.orders = Cube(o => o.Id)
+    // Customer — Id, FirstName, LastName, City, Country, Phone
+    c.customers = Cube(u => u.Id)
+    // OrderItem — Id, OrderId, ProductId, UnitPrice, Quantity
+    c.orderitems = Cube(i => i.Id)
+
     c.supplier_byid = c.suppliers.range_single(s => s.Id)
     c.supplier_bycompanyname = c.suppliers.range_single(s => s.CompanyName)
     c.supplier_bycontactname = c.suppliers.range_single(s => s.ContactName)
@@ -45,54 +54,37 @@ inject('pod', ({ hub, state }) => {
     c.supplier_country = c.suppliers.set_single(s => s.Country)
     c.supplier_byphone = c.suppliers.range_single(s => s.Phone)
     c.supplier_byfax = c.suppliers.range_single(s => s.Fax)
-    c.supplier_byproduct = c.suppliers.set_multiple(s => c.product_bysupplier.lookup(s.Id))
+    c.supplier_byproduct = c.suppliers.link(c.products, s => c.product_bysupplier.lookup(s.Id))
 
-    // Product — Id, ProductName, SupplierId, UnitPrice, Package, IsDiscontinued
-    c.products = Cube(p => p.Id)
     c.product_byid = c.products.range_single(p => p.Id)
     c.product_byproductname = c.products.range_single(p => p.ProductName)
-    c.product_bysupplier = c.products.set_single(p => p.SupplierId)
+    c.product_bysupplier = c.products.link(c.suppliers, p => [p.SupplierId])
     c.product_byunitprice = c.products.range_single(p => p.UnitPrice)
     c.product_bypackage = c.products.range_multiple_text(p => p.Package, stemmer)
     c.product_byisdiscontinued = c.products.range_single(p => p.IsDiscontinued)
-    c.product_byorderitem = c.products.set_multiple(p => c.orderitem_byproduct.lookup(p.Id))
+    c.product_byorderitem = c.products.link(c.orderitems, p => c.orderitem_byproduct.lookup(p.Id))
 
-    // Order — Id, OrderDate, CustomerId, TotalAmount, OrderNumber
-    c.orders = Cube(o => o.Id)
     c.order_byid = c.orders.range_single(o => o.Id)
     c.order_bytime = c.orders.range_single(o => o.ts)
-    c.order_bycustomer = c.orders.set_single(o => o.CustomerId)
+    c.order_bycustomer = c.orders.link(c.customers, o => [o.CustomerId])
     c.order_bytotalamount = c.orders.range_single(o => o.TotalAmount)
     c.order_byordernumber = c.orders.range_single(o => o.OrderNumber)
-    c.order_byorderitem = c.orders.set_multiple(o => c.orderitem_byorder.lookup(o.Id))
+    c.order_byorderitem = c.orders.link(c.orderitems, o => c.orderitem_byorder.lookup(o.Id))
 
-    // Customer — Id, FirstName, LastName, City, Country, Phone
-    c.customers = Cube(u => u.Id)
     c.customer_byid = c.customers.range_single(u => u.Id)
     c.customer_byfirstname = c.customers.range_single(u => u.FirstName)
     c.customer_bylastname = c.customers.range_single(u => u.LastName)
     c.customer_city = c.customers.set_single(u => u.City)
     c.customer_country = c.customers.set_single(u => u.Country)
     c.customer_byphone = c.customers.range_single(u => u.Phone)
-    c.customer_byorder = c.customers.set_multiple(u => c.order_bycustomer.lookup(u.Id))
+    c.customer_byorder = c.customers.link(c.orders, u => c.order_bycustomer.lookup(u.Id))
 
-    // OrderItem — Id, OrderId, ProductId, UnitPrice, Quantity
-    c.orderitems = Cube(i => i.Id)
     c.orderitem_byid = c.orderitems.range_single(i => i.Id)
-    c.orderitem_byorder = c.orderitems.set_single(i => i.OrderId)
-    c.orderitem_byproduct = c.orderitems.set_single(i => i.ProductId)
+    c.orderitem_byorder = c.orderitems.link(c.orders, i => [i.OrderId])
+    c.orderitem_byproduct = c.orderitems.link(c.products, i => [i.ProductId])
     c.orderitem_byunitprice = c.orderitems.range_single(i => i.UnitPrice)
     c.orderitem_byquantity = c.orderitems.range_single(i => i.Quantity)
     c.orderitem_byprice = c.orderitems.range_single(i => i.UnitPrice * i.Quantity)
-
-    c.products.link_to(c.suppliers, c.supplier_byproduct)
-    c.suppliers.link_to(c.products, c.product_bysupplier)
-    c.products.link_to(c.orderitems, c.orderitem_byproduct)
-    c.orderitems.link_to(c.products, c.product_byorderitem)
-    c.customers.link_to(c.orders, c.order_bycustomer)
-    c.orders.link_to(c.customers, c.customer_byorder)
-    c.orderitems.link_to(c.orders, c.order_byorderitem)
-    c.orders.link_to(c.orderitems, c.orderitem_byorder)
 
     // helpers
     c.product_desc = id => c.products.id2d(id).ProductName
