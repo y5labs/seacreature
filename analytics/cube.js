@@ -139,6 +139,11 @@ module.exports = identity => {
 
     for (const i of candidates) {
       if (await cancollect(api, i)) {
+        await hub.emit('trace', {
+          op: 'gc cube',
+          target: api.print(),
+          id: api.i2id(i),
+          desc: 'cube collect' })
         await api.linkfilter({ put: [i] })
       }
     }

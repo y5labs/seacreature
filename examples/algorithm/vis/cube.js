@@ -55,12 +55,10 @@ inject('pod', ({ hub, state }) => {
     })
     const rec = async p => {
       if (p.op == 'finish gc') {
-        console.log(p.op)
         await hub.emit('push trace')
         return
       }
       if (p.op == 'start gc') {
-        console.log(p.op)
         await hub.emit('push trace')
         return
       }
