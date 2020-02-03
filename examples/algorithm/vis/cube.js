@@ -47,28 +47,6 @@ inject('pod', ({ hub, state }) => {
     c.order_byproduct = c.orders.link(c.products, o => o.ProductIds)
 
     c.traces = []
-    let count = 1
-    let current = []
-    hub.on('push trace', () => {
-      c.traces.push(current)
-      current = []
-    })
-    const rec = async p => {
-      if (p.op == 'finish gc') {
-        await hub.emit('push trace')
-        return
-      }
-      if (p.op == 'start gc') {
-        await hub.emit('push trace')
-        return
-      }
-      p.count = count
-      count++
-      current.push(p)
-    }
-    c.suppliers.on('trace', rec)
-    c.products.on('trace', rec)
-    c.orders.on('trace', rec)
 
     const orders_indicies = await c.orders.batch({ put: data.Orders })
     const products_indicies = await c.products.batch({ put: data.Products })
@@ -78,6 +56,33 @@ inject('pod', ({ hub, state }) => {
     await c.products.batch_calculate_selection_change(products_indicies)
     await c.orders.batch_calculate_selection_change(orders_indicies)
 
-    hub.emit('push trace')
+
+    let count = 1
+    let current = []
+    hub.on('push trace', () => {
+      c.traces.push(current)
+      current = []
+    })
+    const rec = async p => {
+      p.count = count
+      count++
+      current.push(p)
+    }
+    c.suppliers.on('trace', rec)
+    c.products.on('trace', rec)
+    c.orders.on('trace', rec)
+
+    // await c.order_byid('Sue')
+    // state.filters.orderbyid = 'Sue'
+    // await c.product_byid('Oranges')
+    // state.filters.productbyid = 'Oranges'
+    await c.supplier_byid('Vege Bin')
+    state.filters.supplierbyid = 'Vege Bin'
+    // await c.product_byid(null)
+    // delete state.filters.productbyid
+    // await c.order_byid(null)
+    // delete state.filters.orderbyid
+
+    await hub.emit('push trace')
   })
 })

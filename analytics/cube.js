@@ -6,6 +6,7 @@ const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
 const Link = require('./link')
 const LinkFilter = require('./linkfilter')
+const GC = require('./gc')
 const text = require('./text')
 const Hub = require('../lib/hub')
 const Mutex = require('../lib/mutex')
@@ -54,116 +55,36 @@ module.exports = identity => {
         put: diff.put.map(i2d),
         del: diff.del.map(i2d)
       })
-      await hub.emit('propagate links', {
+      const payload = {
         put: diff.put.map(i2id),
         del: diff.del.map(i2id)
-      })
+      }
+      for (const [target, dimension] of api.forward.entries()) {
+        const diff = await dimension({ del: payload.del })
+        if (diff.del.length == 0) continue
+        await target.linkfilter({ del: diff.del })
+      }
+      if (candidates.length > 0)
+        await GC(api, candidates)
+      for (const [target, dimension] of api.forward.entries()) {
+        const diff = await dimension({ put: payload.put })
+        if (diff.put.length == 0) continue
+        GC(target, diff.put)
+        // await target.linkfilter({ put: diff.put })
+      }
+      // await hub.emit('propagate links', payload)
+      return
     }
     if (candidates.length > 0)
-      await hub.emit('garbage collection', candidates)
+      await GC(api, candidates)
   }
 
   hub.on('propagate links', async payload => {
-    // ref count ++
-    for (const [target, dimension] of api.forward.entries()) {
-      const diff = await dimension({ del: payload.del })
-      if (diff.del.length == 0) continue
-      await target.linkfilter(diff)
-    }
-
     for (const [target, dimension] of api.forward.entries()) {
       const diff = await dimension({ put: payload.put })
       if (diff.put.length == 0) continue
-      await target.linkfilter(diff)
+      // await target.linkfilter({ put: diff.put })
     }
-  })
-
-  hub.on('garbage collection', async candidates => {
-    await hub.emit('trace', { op: 'start gc' })
-    const seen = new Map()
-    const push = (cube, i) => {
-      if (!seen.has(cube)) seen.set(cube, new Set())
-      seen.get(cube).add(i)
-    }
-    const pop = (cube, i) => {
-      seen.get(cube).delete(i)
-    }
-    const has = (cube, i) => {
-      if (!seen.has(cube)) return false
-      return seen.get(cube).has(i)
-    }
-    const cancollect = async (cube, i) => {
-      await hub.emit('trace', {
-        op: 'gc cube',
-        target: cube.print(),
-        id: cube.i2id(i),
-        desc: 'test' })
-      push(cube, i)
-      for (const [source, dimension] of cube.backward.entries()) {
-        // only follow refs
-        if (dimension.filterindex.get(i) != 0) continue
-        await hub.emit('trace', {
-          op: 'gc dimension',
-          source: cube.print(),
-          target: source.print(),
-          id: cube.i2id(i),
-          desc: 'check' })
-        const links = Array.from(dimension.backward.get(i).keys())
-        let count = links.length
-        for (const id of links.filter(id => dimension.forward.get(id).count == 0)) {
-          const sourceindex = source.id2i(id)
-          if (has(source, sourceindex)) continue
-          const isroot = !source.filterbits.zeroExcept(sourceindex, source.linkfilter.bitindex.offset, ~source.linkfilter.bitindex.one)
-          if (isroot) {
-            count--
-            await hub.emit('trace', {
-              op: 'gc cube',
-              target: source.print(),
-              id: source.i2id(sourceindex),
-              desc: 'is root' })
-          }
-          else if (await cancollect(source, sourceindex)) {
-            // await hub.emit('trace', {
-            //   op: 'gc cube',
-            //   target: source.print(),
-            //   id: source.i2id(sourceindex),
-            //   desc: 'prop collect' })
-            // await source.linkfilter({ put: [sourceindex] })
-          }
-          else {
-            count--
-            await hub.emit('trace', {
-              op: 'gc cube',
-              target: source.print(),
-              id: source.i2id(sourceindex),
-              desc: 'cant prop' })
-          }
-        }
-        if (count == 0) {
-          await hub.emit('trace', {
-            op: 'gc cube',
-            target: source.print(),
-            id: null,
-            desc: `ref is zero ${count}` })
-          pop(cube, i)
-          return false
-        }
-      }
-      pop(cube, i)
-      return true
-    }
-
-    for (const i of candidates) {
-      if (await cancollect(api, i)) {
-        await hub.emit('trace', {
-          op: 'gc cube',
-          target: api.print(),
-          id: api.i2id(i),
-          desc: 'cube collect' })
-        await api.linkfilter({ put: [i] })
-      }
-    }
-    await hub.emit('trace', { op: 'finish gc' })
   })
 
   const api = {
@@ -173,6 +94,7 @@ module.exports = identity => {
     id2i,
     identity,
     print: () => api.identity.toString().split(' => ')[0],
+    trace: p => hub.emit('trace', p),
     on: (...args) => hub.on(...args),
     length: () => index.length(),
     filterbits,
