@@ -12,6 +12,8 @@ const fs = require('fs').promises
 const hub = Hub()
 const state = {}
 let c = null
+state.cube = c = {}
+state.filters = {}
 
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV
 if (!isDevelopment) {
@@ -198,8 +200,6 @@ hub.on('load projections', async () => {
   hub.on('calculate projections', () => suppliersintocustomers())
 })
 
-state.cube = c = {}
-state.filters = {}
 const data = (await Promise.all(
   ['Customers', 'Orders', 'OrderItems', 'Products', 'Suppliers']
   .map(async name => {
@@ -300,31 +300,35 @@ const print = () => {
 console.log(cubes.map(id => id.padStart(12, ' ')).join(''), '   duration')
 
 print()
-await state.cube.supplier_country.hidenulls()
-await state.cube.supplier_country.selectnone()
-await state.cube.supplier_country({ put: ['France'] })
+await c.supplier_country.hidenulls()
+await c.supplier_country.selectnone()
+await c.supplier_country({ put: ['France'] })
 print()
-await state.cube.customer_country.hidenulls()
-await state.cube.customer_country.selectnone()
-await state.cube.customer_country({ put: ['Germany'] })
+await c.customer_country.hidenulls()
+await c.customer_country.selectnone()
+await c.customer_country({ put: ['Germany'] })
 print()
-await state.cube.product_byid(39)
+await c.product_byid('39')
 print()
-await state.cube.supplier_country.shownulls()
-await state.cube.supplier_country.selectall()
+await c.orderitem_byid('1041')
 print()
-await state.cube.customer_country.shownulls()
-await state.cube.customer_country.selectall()
+await c.product_byid(null)
 print()
-await state.cube.product_byid(null)
+await c.orderitem_byid(null)
+print()
+await c.supplier_country.shownulls()
+await c.supplier_country.selectall()
+print()
+await c.customer_country.shownulls()
+await c.customer_country.selectall()
 print()
 
 
 
 // print()
-// await state.cube.product_byid(39)
+// await c.product_byid(39)
 // print()
-// await state.cube.product_byid(null)
+// await c.product_byid(null)
 // print()
 
 })()
