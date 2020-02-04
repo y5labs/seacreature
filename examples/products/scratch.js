@@ -13,8 +13,48 @@ const hub = Hub()
 const state = {}
 let c = null
 
+const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV
+if (!isDevelopment) {
+  module.exports = (state) => { }
+  return
+}
 
-hub.on('load projections 2', async () => {
+const { PerformanceObserver, performance } = require('perf_hooks')
+
+let perf_entry = null
+new PerformanceObserver((items) => {
+  items.getEntries().forEach(e => perf_entry = e)
+  performance.clearMarks()
+})
+.observe({ entryTypes: ['measure'] })
+
+let last = null
+
+const perf = state => {
+  if (!state) {
+    last = 'start'
+    performance.mark('start')
+    return null
+  }
+
+  if (!last) {
+    last = state
+    performance.mark(state)
+    return null
+  }
+
+  performance.mark(state)
+  performance.measure(state, last, state)
+  // console.log(`${(perf_entry.duration / 1000).toFixed(4)}s — ${perf_entry.name}`)
+  performance.mark(state)
+  last = state
+  return perf_entry
+}
+
+
+perf()
+
+hub.on('load projections', async () => {
   // count projections
   state.cube.counts = {
     supplier: { selected: 0, total: 0 },
@@ -251,35 +291,40 @@ await c.orderitems.batch_calculate_selection_change(orderitems_indicies)
 await hub.emit('calculate projections')
 
 const cubes = ['suppliers', 'products', 'orderitems', 'orders', 'customers']
-const print = () => console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).length.toString().padStart(12, ' ')).join(''))
+let count = 0
+const print = () => {
+  const e = perf((count++).toString())
+  console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).length.toString().padStart(12, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`)
+}
 
-console.log(cubes.map(id => id.padStart(12, ' ')).join(''))
-// print()
-// await state.cube.supplier_country.hidenulls()
-// await state.cube.supplier_country.selectnone()
-// await state.cube.supplier_country({ put: ['France'] })
-// print()
-// await state.cube.customer_country.hidenulls()
-// await state.cube.customer_country.selectnone()
-// await state.cube.customer_country({ put: ['Germany'] })
-// print()
-// await state.cube.product_byid(39)
-// print()
-// await state.cube.supplier_country.shownulls()
-// await state.cube.supplier_country.selectall()
-// print()
-// await state.cube.customer_country.shownulls()
-// await state.cube.customer_country.selectall()
-// print()
-// await state.cube.product_byid(null)
-// print()
+console.log(cubes.map(id => id.padStart(12, ' ')).join(''), '   duration')
 
-
-
+print()
+await state.cube.supplier_country.hidenulls()
+await state.cube.supplier_country.selectnone()
+await state.cube.supplier_country({ put: ['France'] })
+print()
+await state.cube.customer_country.hidenulls()
+await state.cube.customer_country.selectnone()
+await state.cube.customer_country({ put: ['Germany'] })
 print()
 await state.cube.product_byid(39)
 print()
+await state.cube.supplier_country.shownulls()
+await state.cube.supplier_country.selectall()
+print()
+await state.cube.customer_country.shownulls()
+await state.cube.customer_country.selectall()
+print()
 await state.cube.product_byid(null)
 print()
+
+
+
+// print()
+// await state.cube.product_byid(39)
+// print()
+// await state.cube.product_byid(null)
+// print()
 
 })()
