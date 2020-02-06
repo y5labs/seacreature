@@ -16,46 +16,28 @@ module.exports = (cube, map) => {
     for (const key of del) {
       if (!forward.has(key)) continue
       const node = forward.get(key)
+      // TODO remove
       node.count++
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
-        if (node.count >= 0) {
-          if (current === -1) {
-            diff.del.add(index)
-          }
-          filterindex.set(index, current + 1)
+        if (current.count === -1) {
+          diff.del.add(index)
         }
-        // await hub.emit('trace', {
-        //   op: '+ link',
-        //   source: api.source.print(),
-        //   target: cube.print(),
-        //   key,
-        //   index: cube.i2id(index),
-        //   current
-        // })
+        current.count++
       }
     }
     for (const key of put) {
       if (!forward.has(key)) continue
       const node = forward.get(key)
+      // TODO remove
       node.count--
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
-        if (node.count <= 0) {
-          if (current === 0) {
-            diff.del.delete(index)
-            diff.put.add(index)
-          }
-          filterindex.set(index, current - 1)
+        if (current.count === 0) {
+          diff.del.delete(index)
+          diff.put.add(index)
         }
-        // await hub.emit('trace', {
-        //   op: '- link',
-        //   source: api.source.print(),
-        //   target: cube.print(),
-        //   key,
-        //   index: cube.i2id(index),
-        //   current
-        // })
+        current.count--
       }
     }
     return {
@@ -131,10 +113,14 @@ module.exports = (cube, map) => {
         })
         const forwardnode = forward.get(key)
         forwardnode.indicies.add(index)
-        count--
+        count++
       }
-      if (count > 0) diff.put.push(index)
-      filterindex.set(index, 0)
+      // TODO Is this correct!?
+      // if (count > 0) diff.put.push(index)
+      filterindex.set(index, {
+        count: 0,
+        total: count
+      })
     })
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one

@@ -1,67 +1,114 @@
 (async () => {
 
+const { PerformanceObserver, performance } = require('perf_hooks')
+
+let perf_entry = null
+new PerformanceObserver((items) => {
+  items.getEntries().forEach(e => perf_entry = e)
+  performance.clearMarks()
+})
+.observe({ entryTypes: ['measure'] })
+
+let last = null
+
+const perf = state => {
+  if (!state) {
+    last = 'start'
+    performance.mark('start')
+    return null
+  }
+
+  if (!last) {
+    last = state
+    performance.mark(state)
+    return null
+  }
+
+  performance.mark(state)
+  performance.measure(state, last, state)
+  // console.log(`${(perf_entry.duration / 1000).toFixed(4)}s — ${perf_entry.name}`)
+  performance.mark(state)
+  last = state
+  return perf_entry
+}
+
 const Cube = require('seacreature/analytics/cube')
 const data = {
-  Orders: [
-    { Id: 'Bob Beer', ProductId: 'Beer' },
-    { Id: 'Bruce Beer', ProductId: 'Beer' },
-    { Id: 'Mary Oranges', ProductId: 'Oranges' },
-    { Id: 'Sue Apples', ProductId: 'Apples' }
+  Suppliers: [
+    { Id: 'Bottle-O' },
+    { Id: 'Vege Bin' }
   ],
   Products: [
     { Id: 'Beer', SupplierId: 'Bottle-O' },
     { Id: 'Oranges', SupplierId: 'Vege Bin' },
     { Id: 'Apples', SupplierId: 'Vege Bin' }
   ],
-  Suppliers: [
-    { Id: 'Bottle-O' },
-    { Id: 'Vege Bin' }
+  Orders: [
+    { Id: 1, CustomerId: 'Bob', ProductIds: ['Beer'] },
+    { Id: 2, CustomerId: 'Bruce', ProductIds: ['Beer'] },
+    { Id: 3, CustomerId: 'Mary', ProductIds: ['Beer', 'Oranges'] },
+    { Id: 4, CustomerId: 'Mary', ProductIds: ['Apples'] },
+    { Id: 5, CustomerId: 'Sue', ProductIds: ['Apples'] }
+  ],
+  Customers: [
+    { Id: 'Bob' },
+    { Id: 'Bruce' },
+    { Id: 'Mary' },
+    { Id: 'Sue' }
   ]
 }
 
-const suppliers = Cube(s => s.Id)
-const supplier_byid = suppliers.range_single(s => s.Id)
-const supplier_byproduct = suppliers.link_multiple(s => product_bysupplier.lookup(s.Id))
+perf()
 
-const products = Cube(p => p.Id)
-const product_byid = products.range_single(p => p.Id)
-const product_bysupplier = products.link_single(p => p.SupplierId)
-const product_byorder = products.link_multiple(p => order_byproduct.lookup(p.Id))
-
-const orders = Cube(o => o.Id)
-const order_byid = orders.range_single(o => o.Id)
-const order_byproduct = orders.link_single(o => o.ProductId)
-
-products.link_to(suppliers, supplier_byproduct)
-suppliers.link_to(products, product_bysupplier)
-products.link_to(orders, order_byproduct)
-orders.link_to(products, product_byorder)
-
-const orders_indicies = await orders.batch({ put: data.Orders })
-const products_indicies = await products.batch({ put: data.Products })
-const suppliers_indicies = await suppliers.batch({ put: data.Suppliers })
-await suppliers.batch_calculate_selection_change(suppliers_indicies)
-await products.batch_calculate_selection_change(products_indicies)
-await orders.batch_calculate_selection_change(orders_indicies)
-
-const print = msg => {
-  console.log('***', msg)
-  console.log('Or', Array.from(orders).join(', '))
-  console.log('Pr', Array.from(products).join(', '))
-  console.log('Su', Array.from(suppliers).join(', '))
+const c = {
+  suppliers: Cube(s => s.Id),
+  products: Cube(p => p.Id),
+  orders: Cube(o => o.Id),
+  customers: Cube(c => c.Id)
 }
+
+const supplier_byid = c.suppliers.range_single(s => s.Id)
+const supplier_byproduct = c.suppliers.link(c.products, s => product_bysupplier.lookup(s.Id))
+
+const product_byid = c.products.range_single(p => p.Id)
+const product_bysupplier = c.products.link(c.suppliers, p => [p.SupplierId])
+const product_byorder = c.products.link(c.orders, p => order_byproduct.lookup(p.Id))
+
+const order_byid = c.orders.range_single(o => o.Id)
+const order_byproduct = c.orders.link(c.products, o => o.ProductIds)
+const order_bycustomer = c.orders.link(c.customers, o => [o.CustomerId])
+
+const customer_byid = c.customers.range_single(c => c.Id)
+const customer_byorder = c.customers.link(c.orders, c => order_bycustomer.lookup(c.Id))
+
+const suppliers_indicies = await c.suppliers.batch({ put: data.Suppliers })
+const products_indicies = await c.products.batch({ put: data.Products })
+const orders_indicies = await c.orders.batch({ put: data.Orders })
+const customers_indicies = await c.customers.batch({ put: data.Customers })
+await c.suppliers.batch_calculate_selection_change(suppliers_indicies)
+await c.products.batch_calculate_selection_change(products_indicies)
+await c.orders.batch_calculate_selection_change(orders_indicies)
+await c.customers.batch_calculate_selection_change(customers_indicies)
+
+const cubes = ['suppliers', 'products', 'orders', 'customers']
+const padding = 24
+let count = 0
+const print = msg => {
+  const e = perf((count++).toString())
+  console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).map(c[id].identity).join(', ').padStart(padding, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
+}
+
+console.log(cubes.map(id => id.padStart(padding, ' ')).join(''), '   duration')
 
 // Scenario 2
 print()
-await order_byid('Bob Beer')
-print('order_byid(Bob Beer)')
-// await supplier_byid('Bottle-O')
-// print('supplier_byid(Bottle-O)')
-// await product_byid('Beer')
-// print('product_byid(Beer)')
-// await order_byid(null)
-// print('order_byid(null)')
-// await supplier_byid(null)
-// print('supplier_byid(null)')
+await product_byid('Beer')
+print('product_byid(Beer)')
+await customer_byid('Mary')
+print('customer_byid(Mary)')
+await product_byid(null)
+print('product_byid(null)')
+await customer_byid(null)
+print('customer_byid(null)')
 
 })()
