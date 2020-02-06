@@ -1,10 +1,10 @@
 # Product Model Seacreature Example
 
-Reference counting.
-Each cube gets a sparse array of ref counts.
-Batches add to the ref counts.
+- [ ] Write tests
+- [ ] Implement reverse mark and sweep with relationship counting
 
-Filtering needs to come with the weight of reference counts against the filtered field?
 
+# Performance
 node --prof ./scratch.js
 node --prof-process --preprocess -j isolate*.log | flamebearer
+

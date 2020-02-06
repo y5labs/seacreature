@@ -53,9 +53,6 @@ const perf = state => {
   return perf_entry
 }
 
-
-perf()
-
 hub.on('load projections', async () => {
   // count projections
   state.cube.counts = {
@@ -224,6 +221,8 @@ for (const product of data.Products) {
   product.IsDiscontinued = product.IsDiscontinued === '1'
 }
 
+perf()
+
 // Supplier — Id, CompanyName, ContactName, City, Country, Phone, Fax
 c.suppliers = Cube(s => s.Id)
 // Product — Id, ProductName, SupplierId, UnitPrice, Package, IsDiscontinued
@@ -292,9 +291,9 @@ await hub.emit('calculate projections')
 
 const cubes = ['suppliers', 'products', 'orderitems', 'orders', 'customers']
 let count = 0
-const print = () => {
+const print = msg => {
   const e = perf((count++).toString())
-  console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).length.toString().padStart(12, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`)
+  console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).length.toString().padStart(12, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
 }
 
 console.log(cubes.map(id => id.padStart(12, ' ')).join(''), '   duration')
@@ -303,32 +302,25 @@ print()
 await c.supplier_country.hidenulls()
 await c.supplier_country.selectnone()
 await c.supplier_country({ put: ['France'] })
-print()
+print('Supplier France')
 await c.customer_country.hidenulls()
 await c.customer_country.selectnone()
 await c.customer_country({ put: ['Germany'] })
-print()
+print('Customer Germany')
 await c.product_byid('39')
-print()
+print('Product Chartreuse verte')
 await c.orderitem_byid('1041')
-print()
+print('Maria Order')
 await c.product_byid(null)
-print()
+print('All Products')
+console.log(Array.from(c.suppliers.filtered(Infinity)))
 await c.orderitem_byid(null)
-print()
+print('All Order Items')
 await c.supplier_country.shownulls()
 await c.supplier_country.selectall()
-print()
+print('All Suppliers')
 await c.customer_country.shownulls()
 await c.customer_country.selectall()
-print()
-
-
-
-// print()
-// await c.product_byid(39)
-// print()
-// await c.product_byid(null)
-// print()
+print('All Customers')
 
 })()

@@ -13,12 +13,6 @@ module.exports = cube => {
       if (current != 0) continue
       diff.del.add(index)
       filterindex.set(index, 1)
-      // await hub.emit('trace', {
-      //   op: '- ref',
-      //   target: cube.print(),
-      //   id: cube.i2id(index),
-      //   current: 1
-      // })
     }
     for (const index of put) {
       const current = filterindex.get(index)
@@ -26,12 +20,6 @@ module.exports = cube => {
       diff.del.delete(index)
       diff.put.add(index)
       filterindex.set(index, 0)
-      // await hub.emit('trace', {
-      //   op: '+ ref',
-      //   target: cube.print(),
-      //   id: cube.i2id(index),
-      //   current: 0
-      // })
     }
     await hub.emit('filter changed', {
       bitindex,

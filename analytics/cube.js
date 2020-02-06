@@ -10,6 +10,21 @@ const GC = require('./gc')
 const text = require('./text')
 const Hub = require('../lib/hub')
 
+const visit = (cube, fn) => {
+  const seen = new Set()
+  const tovisit = new Set([cube])
+  while (tovisit.size > 0) {
+    const visiting = Array.from(tovisit)
+    tovisit.clear()
+    for (const current of visiting) {
+      seen.add(current)
+      fn(current)
+      for (const forward of current.forward.keys())
+        if (!seen.has(forward)) tovisit.add(forward)
+    }
+  }
+}
+
 module.exports = identity => {
   const hub = Hub()
   const data = new Map()
@@ -20,6 +35,7 @@ module.exports = identity => {
 
   const forward = new Map()
   const backward = new Map()
+  const mark = []
 
   const i2d = i => data.get(index.get(i))
   const i2id = i => index.get(i)
@@ -47,6 +63,11 @@ module.exports = identity => {
 
     await hub.emit('filter changed', { bitindex, put, del })
 
+    // could we only clear out things we can visit?
+    visit(api, cube => {
+      for (let i = 0; i < cube.mark.length; i++)
+        cube.mark[0] = false
+    })
     if (diff.put.length > 0 || diff.del.length > 0) {
       await hub.emit('selection changed', {
         put: diff.put.map(i2d),
@@ -59,7 +80,7 @@ module.exports = identity => {
       for (const [target, dimension] of api.forward.entries()) {
         const diff = await dimension(payload)
         if (diff.del.length > 0) await target.linkfilter({ del: diff.del })
-        await GC(target, Array.from(new Set(payload.put.map(i => {
+        await GC.collect(target, Array.from(new Set(payload.put.map(i => {
           const node = dimension.forward.get(i)
           if (!node) return []
           return Array.from(node.indicies.keys())
@@ -67,7 +88,7 @@ module.exports = identity => {
       }
     }
     if (candidates.length > 0)
-      await GC(api, candidates)
+      await GC.collect(api, candidates)
   }
 
   const api = {
@@ -84,6 +105,7 @@ module.exports = identity => {
     index,
     forward,
     backward,
+    mark,
     dimensions,
     range_single: map => {
       const result = RangeSingle(api, map)
@@ -186,6 +208,8 @@ module.exports = identity => {
         })
       }
       filterbits.lengthen(index.length())
+      const existing = mark.length
+      mark.length = index.length()
       for (const i of indicies.put) filterbits.clear(i)
       for (const d of dimensions) d.batch(indicies, put, del)
       await hub.emit('batch', { indicies, put, del })
