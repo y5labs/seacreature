@@ -10,21 +10,6 @@ const GC = require('./gc')
 const text = require('./text')
 const Hub = require('../lib/hub')
 
-const visit = (cube, fn) => {
-  const seen = new Set()
-  const tovisit = new Set([cube])
-  while (tovisit.size > 0) {
-    const visiting = Array.from(tovisit)
-    tovisit.clear()
-    for (const current of visiting) {
-      seen.add(current)
-      fn(current)
-      for (const forward of current.forward.keys())
-        if (!seen.has(forward)) tovisit.add(forward)
-    }
-  }
-}
-
 module.exports = identity => {
   const hub = Hub()
   const data = new Map()
@@ -63,11 +48,7 @@ module.exports = identity => {
 
     await hub.emit('filter changed', { bitindex, put, del })
 
-    // could we only clear out things we can visit?
-    visit(api, cube => {
-      for (let i = 0; i < cube.mark.length; i++)
-        cube.mark[0] = false
-    })
+    GC.clear(api)
     if (diff.put.length > 0 || diff.del.length > 0) {
       await hub.emit('selection changed', {
         put: diff.put.map(i2d),
