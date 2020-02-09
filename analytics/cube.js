@@ -17,7 +17,10 @@ module.exports = identity => {
   const index = new SparseArray()
   const filterbits = new BitArray()
   const dimensions = []
+  const internal_dimensions = []
 
+  const forward_links = []
+  const backward_links = []
   const forward = new Map()
   const backward = new Map()
   const mark = []
@@ -89,47 +92,52 @@ module.exports = identity => {
     mark,
     dimensions,
     range_single: map => {
-      const result = RangeSingle(api, map)
-      dimensions.push(result)
-      result.on('filter changed', p => onfiltered(p))
-      // result.on('trace', p => hub.emit('trace', p))
-      return result
+      const dimension = RangeSingle(api, map)
+      dimensions.push(dimension)
+      internal_dimensions.push(dimension)
+      dimension.on('filter changed', p => onfiltered(p))
+      // dimension.on('trace', p => hub.emit('trace', p))
+      return dimension
     },
     range_multiple: map => {
-      const result = RangeMultiple(api, map)
-      dimensions.push(result)
-      result.on('filter changed', p => onfiltered(p))
-      // result.on('trace', p => hub.emit('trace', p))
-      return result
+      const dimension = RangeMultiple(api, map)
+      dimensions.push(dimension)
+      internal_dimensions.push(dimension)
+      dimension.on('filter changed', p => onfiltered(p))
+      // dimension.on('trace', p => hub.emit('trace', p))
+      return dimension
     },
     range_multiple_text: (map, stemmer) => {
       const map_text = d => text.default_process(map(d)).map(stemmer)
-      const result = RangeMultiple(api, map_text)
-      dimensions.push(result)
-      result.on('filter changed', p => onfiltered(p))
-      // result.on('trace', p => hub.emit('trace', p))
+      const dimension = RangeMultiple(api, map_text)
+      dimensions.push(dimension)
+      internal_dimensions.push(dimension)
+      dimension.on('filter changed', p => onfiltered(p))
+      // dimension.on('trace', p => hub.emit('trace', p))
       const search = (lo, hi) => {
         if (lo) lo = stemmer(lo)
         if (hi) hi = stemmer(hi)
-        return result(lo, hi)
+        return dimension(lo, hi)
       }
-      for (const key of Object.keys(result))
-        search[key] = result[key]
+      for (const key of Object.keys(dimension))
+        search[key] = dimension[key]
       return search
     },
     set_single: map => {
-      const result = SetSingle(api, map)
-      dimensions.push(result)
-      result.on('filter changed', p => onfiltered(p))
-      // result.on('trace', p => hub.emit('trace', p))
-      return result
+      const dimension = SetSingle(api, map)
+      dimensions.push(dimension)
+      internal_dimensions.push(dimension)
+      dimension.on('filter changed', p => onfiltered(p))
+      // dimension.on('trace', p => hub.emit('trace', p))
+      return dimension
     },
     set_multiple: map => {
-      const result = SetMultiple(api, map)
-      dimensions.push(result)
-      result.on('filter changed', p => onfiltered(p))
-      // result.on('trace', p => hub.emit('trace', p))
-      return result
+      const dimension = SetMultiple(api, map)
+      dimensions.push(dimension)
+      internal_dimensions.push(dimension)
+      dimension.on('filter changed', p => onfiltered(p))
+      // dimension.on('trace', p => hub.emit('trace', p))
+      return dimension
     },
     link: (source, map) => {
       if (source.forward.has(api))
@@ -137,11 +145,23 @@ module.exports = identity => {
       const dimension = Link(api, map)
       dimensions.push(dimension)
       dimension.on('filter changed', p => onfiltered(p))
-      // dimension.on('trace', p => hub.emit('trace', p))
       source.forward.set(api, dimension)
       api.backward.set(source, dimension)
       dimension.source = source
       return dimension
+    },
+    backward_link: (source, map) => {
+      const dimension = api.link(source, map)
+      backward_links.push(dimension)
+      return dimension
+    },
+    forward_link: (source, map) => {
+      const dimension = api.link(source, map)
+      forward_links.push(dimension)
+      return dimension
+    },
+    batch_calculate_link_change: ({ indicies, put, del }) => {
+      for (const d of backward_links) d.batch(indicies, put, del)
     },
     batch_calculate_selection_change: async ({ put, del }) => {
       if (put.length == 0 && del.length == 0) return
@@ -179,20 +199,24 @@ module.exports = identity => {
       }
       const indicies = index.batch({ put: put_ids, del: del_ids })
       const result = {
-        put: indicies.put.map(i => {
-          lookup.set(i2id(i), i)
-          return [i, i2d(i)]
-        }),
-        del: indicies.del.map((i, index) => {
-          lookup.delete(i2id(i))
-          return [i, del[index]]
-        })
+        selection_change: {
+          put: indicies.put.map(i => {
+            lookup.set(i2id(i), i)
+            return [i, i2d(i)]
+          }),
+          del: indicies.del.map((i, index) => {
+            lookup.delete(i2id(i))
+            return [i, del[index]]
+          })
+        },
+        link_change: { indicies, put, del }
       }
       filterbits.lengthen(index.length())
       const existing = mark.length
       mark.length = index.length()
       for (const i of indicies.put) filterbits.clear(i)
-      for (const d of dimensions) d.batch(indicies, put, del)
+      for (const d of internal_dimensions) d.batch(indicies, put, del)
+      for (const d of forward_links) d.batch(indicies, put, del)
       await hub.emit('batch', { indicies, put, del })
       return result
     }
