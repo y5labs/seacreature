@@ -90,7 +90,10 @@ SparseArray.prototype.batch = function({ put = [], del = [] }) {
 SparseArray.prototype.forEach = function(fn) {
   let i = 0
   while (i < this._array.length) {
-    if (this._array[i] === null) continue
+    if (this._array[i] === null) {
+      i++
+      continue
+    }
     fn(i, this._array[i])
     i++
   }

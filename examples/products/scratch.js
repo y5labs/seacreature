@@ -291,35 +291,36 @@ await hub.emit('calculate projections')
 
 const cubes = ['suppliers', 'products', 'orderitems', 'orders', 'customers']
 let count = 0
-const print = msg => {
+const print_cubes = msg => {
   const e = perf((count++).toString())
   console.log(cubes.map(id => Array.from(c[id].filtered(Infinity)).length.toString().padStart(12, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
 }
-
 console.log(cubes.map(id => id.padStart(12, ' ')).join(''), '   duration')
-
-print()
+print_cubes()
 await c.supplier_country.hidenulls()
 await c.supplier_country.selectnone()
 await c.supplier_country({ put: ['France'] })
-print('Supplier France')
+print_cubes('Supplier France')
 await c.customer_country.hidenulls()
 await c.customer_country.selectnone()
 await c.customer_country({ put: ['Germany'] })
-print('Customer Germany')
+print_cubes('Customer Germany')
 await c.product_byid('39')
-print('Product Chartreuse verte')
+print_cubes('Product Chartreuse verte')
 await c.orderitem_byid('1041')
-print('Maria Order')
+print_cubes('Maria Order')
 await c.product_byid(null)
-print('All Products')
+print_cubes('All Products')
 await c.orderitem_byid(null)
-print('All Order Items')
+print_cubes('All Order Items')
 await c.supplier_country.shownulls()
 await c.supplier_country.selectall()
-print('All Suppliers')
+print_cubes('All Suppliers')
 await c.customer_country.shownulls()
 await c.customer_country.selectall()
-print('All Customers')
+print_cubes('All Customers')
+
+// const links = ['supplier_byproduct', 'product_bysupplier', 'product_byorderitem']
+
 
 })()
