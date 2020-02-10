@@ -118,7 +118,6 @@ module.exports = (cube, map) => {
       }
       // TODO Is this correct!?
       // if (count > 0) diff.put.push(index)
-      console.log(api.source.print(), '=>', cube.print(), cube.i2id(index), count)
       filterindex.set(index, {
         count: 0,
         total: count
