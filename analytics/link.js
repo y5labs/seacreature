@@ -17,27 +17,27 @@ module.exports = (cube, map) => {
       if (!forward.has(key)) continue
       const node = forward.get(key)
       // TODO remove
-      node.count++
+      node.count--
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
-        if (current.count === -1) {
+        if (current.count === 1) {
           diff.del.add(index)
         }
-        current.count++
+        current.count--
       }
     }
     for (const key of put) {
       if (!forward.has(key)) continue
       const node = forward.get(key)
       // TODO remove
-      node.count--
+      node.count++
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
         if (current.count === 0) {
           diff.del.delete(index)
           diff.put.add(index)
         }
-        current.count--
+        current.count++
       }
     }
     return {
@@ -74,6 +74,7 @@ module.exports = (cube, map) => {
   api.forward = forward
   api.backward = backward
   api.on = hub.on
+  api.cube = cube
   api.batch = (dataindicies, put, del) => {
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }

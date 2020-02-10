@@ -1,58 +1,28 @@
 (async () => {
 
-const { PerformanceObserver, performance } = require('perf_hooks')
-
-let perf_entry = null
-new PerformanceObserver((items) => {
-  items.getEntries().forEach(e => perf_entry = e)
-  performance.clearMarks()
-})
-.observe({ entryTypes: ['measure'] })
-
-let last = null
-
-const perf = state => {
-  if (!state) {
-    last = 'start'
-    performance.mark('start')
-    return null
-  }
-
-  if (!last) {
-    last = state
-    performance.mark(state)
-    return null
-  }
-
-  performance.mark(state)
-  performance.measure(state, last, state)
-  // console.log(`${(perf_entry.duration / 1000).toFixed(4)}s — ${perf_entry.name}`)
-  performance.mark(state)
-  last = state
-  return perf_entry
-}
-
+const { perf } = require('seacreature/lib/perf')
 const Cube = require('seacreature/analytics/cube')
+
 const data = {
-  Suppliers: [
+  suppliers: [
     { Id: 'Bottle-O' },
     { Id: 'Vege Bin' }
   ],
-  Products: [
+  products: [
     { Id: 'Beer', SupplierId: 'Bottle-O' },
     { Id: 'Oranges', SupplierId: 'Vege Bin' },
     { Id: 'Apples', SupplierId: 'Vege Bin' }
   ],
-  Orders: [
+  orders: [
     { Id: 1, CustomerId: 'Bob', ProductIds: ['Beer'] },
-    { Id: 2, CustomerId: 'Bruce', ProductIds: ['Beer'] },
+    { Id: 2, CustomerId: 'Andy', ProductIds: ['Beer'] },
     { Id: 3, CustomerId: 'Mary', ProductIds: ['Beer', 'Oranges'] },
     { Id: 4, CustomerId: 'Mary', ProductIds: ['Apples'] },
     { Id: 5, CustomerId: 'Sue', ProductIds: ['Apples'] }
   ],
-  Customers: [
+  customers: [
     { Id: 'Bob' },
-    { Id: 'Bruce' },
+    { Id: 'Andy' },
     { Id: 'Mary' },
     { Id: 'Sue' }
   ]
@@ -82,31 +52,28 @@ state.order_bycustomer = state.orders.forward_link(state.customers, o => [o.Cust
 state.customer_byid = state.customers.range_single(c => c.Id)
 state.customer_byorder = state.customers.backward_link(state.orders, c => state.order_bycustomer.lookup(c.Id))
 
-const suppliers_diff = await state.suppliers.batch({ put: data.Suppliers })
-const products_diff = await state.products.batch({ put: data.Products })
-const orders_diff = await state.orders.batch({ put: data.Orders })
-const customers_diff = await state.customers.batch({ put: data.Customers })
+const put = async (state, data) => {
+  const diff = {}
+  for (const key of Object.keys(data))
+    diff[key] = await state[key].batch({ put: data[key] })
+  for (const key of Object.keys(diff))
+    await state[key].batch_calculate_link_change(diff[key].link_change)
+  for (const key of Object.keys(diff))
+    await state[key].batch_calculate_selection_change(diff[key].selection_change)
+}
 
-await state.suppliers.batch_calculate_link_change(suppliers_diff.link_change)
-await state.products.batch_calculate_link_change(products_diff.link_change)
-await state.orders.batch_calculate_link_change(orders_diff.link_change)
-await state.customers.batch_calculate_link_change(customers_diff.link_change)
-
-await state.suppliers.batch_calculate_selection_change(suppliers_diff.selection_change)
-await state.products.batch_calculate_selection_change(products_diff.selection_change)
-await state.orders.batch_calculate_selection_change(orders_diff.selection_change)
-await state.customers.batch_calculate_selection_change(customers_diff.selection_change)
+await put(state, data)
 
 const cubes = ['suppliers', 'products', 'orders', 'customers']
-const padding = 24
+const cube_padding = 24
 let count = 0
 const print_cubes = msg => {
   const e = perf((count++).toString())
-  console.log(cubes.map(id => Array.from(state[id].filtered(Infinity)).map(state[id].identity).join(', ').padStart(padding, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
+  console.log(cubes.map(id => Array.from(state[id].filtered(Infinity)).map(state[id].identity).join(', ').padStart(cube_padding, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
 }
 
 console.log()
-console.log(cubes.map(id => id.padStart(padding, ' ')).join(''), '   duration')
+console.log(cubes.map(id => id.padStart(cube_padding, ' ')).join(''), '   duration')
 print_cubes()
 await state.product_byid('Beer')
 print_cubes('product_byid(Beer)')
@@ -118,13 +85,15 @@ await state.customer_byid(null)
 print_cubes('customer_byid(null)')
 
 const links = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
+const link_padding = 20
 const print_links = msg => {
   const e = perf((count++).toString())
-  console.log(links.map(id => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(', ').padStart(padding, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
+  console.log(links.map(id => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(' ').padStart(link_padding, ' ')).join(''), `   ${(e.duration / 1000).toFixed(4)}s`, `    ${msg}`)
 }
 
 console.log()
-console.log(links.map(id => id.padStart(padding, ' ')).join(''), '   duration')
+console.log(links.map(id => id.padStart(link_padding, ' ')).join(''), '   duration')
+console.log(links.map(id => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padStart(link_padding, ' ')).join(''))
 print_links()
 await state.product_byid('Beer')
 print_links('product_byid(Beer)')
