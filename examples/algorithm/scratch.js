@@ -86,11 +86,11 @@ const print_cubes = msg => {
 
 perf()
 console.log()
-console.log('┌' + Array(68).fill('─').join('') + '┐')
+console.log('╭' + Array(68).fill('─').join('') + '╮')
 console.log('│', cubes.map((id, index) => cube_desc[index].padEnd(cube_paddings[index], ' ')).join(''), '  duration'.padEnd(11, ' '), 'action'.padEnd(20, ' '), '│')
 console.log('├' + Array(68).fill('─').join('') + '┤')
 await run(print_cubes)
-console.log('└' + Array(68).fill('─').join('') + '┘')
+console.log('╰' + Array(68).fill('─').join('') + '╯')
 
 const link_dests = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
 const link_dest_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
@@ -101,12 +101,12 @@ const print_link_dests = msg => {
 }
 
 console.log()
-console.log('┌' + Array(88).fill('─').join('') + '┐')
+console.log('╭' + Array(88).fill('─').join('') + '╮')
 console.log('│', link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join(''), '│'.padStart(35, ' '))
 console.log('│', link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join(''), '  duration'.padEnd(11, ' '), 'action'.padEnd(20, ' '), '│')
 console.log('├' + Array(88).fill('─').join('') + '┤')
 await run(print_link_dests)
-console.log('└' + Array(88).fill('─').join('') + '┘')
+console.log('╰' + Array(88).fill('─').join('') + '╯')
 
 const link_srcs = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
 const link_src_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
@@ -117,11 +117,11 @@ const print_link_srcs = msg => {
 }
 
 console.log()
-console.log('┌' + Array(88).fill('─').join('') + '┐')
+console.log('╭' + Array(88).fill('─').join('') + '╮')
 console.log('│', link_srcs.map((id, index) => link_src_desc[index].padEnd(link_src_paddings[index], ' ')).join(''), '│'.padStart(37, ' '))
 console.log('│', link_srcs.map((id, index) => Array.from(state[id].forward.keys(), i => i.toString()[0]).join(' ').padEnd(link_src_paddings[index], ' ')).join(''), '  duration'.padEnd(11, ' '), 'action'.padEnd(20, ' '), '│')
 console.log('├' + Array(88).fill('─').join('') + '┤')
 await run(print_link_srcs)
-console.log('└' + Array(88).fill('─').join('') + '┘')
+console.log('╰' + Array(88).fill('─').join('') + '╯')
 
 })()
