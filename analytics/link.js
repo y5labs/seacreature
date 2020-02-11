@@ -40,6 +40,10 @@ module.exports = (cube, map) => {
         current.count++
       }
     }
+    // console.log('link', cube.print(), api.source.print(), { put: put.map(i => api.source.id2d(i)), del: del.map(i => api.source.id2d(i)) }, {
+    //   put: Array.from(diff.put),
+    //   del: Array.from(diff.del)
+    // })
     return {
       put: Array.from(diff.put),
       del: Array.from(diff.del)

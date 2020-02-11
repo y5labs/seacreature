@@ -198,7 +198,7 @@ hub.on('load projections', async () => {
 })
 
 const data = (await Promise.all(
-  ['Customers', 'Orders', 'OrderItems', 'Products', 'Suppliers']
+  ['customers', 'orders', 'orderitems', 'products', 'suppliers']
   .map(async name => {
     const res = await fs.readFile(`../../docs/data/${name}.csv`, 'utf8')
     // console.log(res)
@@ -208,15 +208,15 @@ const data = (await Promise.all(
     result[item.name] = item.data
     return result
   }, {})
-for (const order of data.Orders) {
+for (const order of data.orders) {
   order.ts = DateTime.fromISO(order.OrderDate).toMillis()
   order.TotalAmount = parseFloat(order.TotalAmount) * 100
 }
-for (const item of data.OrderItems) {
+for (const item of data.orderitems) {
   item.UnitPrice = parseFloat(item.UnitPrice) * 100
   item.Quantity = parseFloat(item.Quantity)
 }
-for (const product of data.Products) {
+for (const product of data.products) {
   product.UnitPrice = parseFloat(product.UnitPrice) * 100
   product.IsDiscontinued = product.IsDiscontinued === '1'
 }
@@ -241,22 +241,22 @@ c.supplier_city = c.suppliers.set_single(s => s.City)
 c.supplier_country = c.suppliers.set_single(s => s.Country)
 c.supplier_byphone = c.suppliers.range_single(s => s.Phone)
 c.supplier_byfax = c.suppliers.range_single(s => s.Fax)
-c.supplier_byproduct = c.suppliers.link(c.products, s => c.product_bysupplier.lookup(s.Id))
+c.supplier_byproduct = c.suppliers.backward_link(c.products, s => c.product_bysupplier.lookup(s.Id))
 
 c.product_byid = c.products.range_single(p => p.Id)
 c.product_byproductname = c.products.range_single(p => p.ProductName)
-c.product_bysupplier = c.products.link(c.suppliers, p => [p.SupplierId])
+c.product_bysupplier = c.products.forward_link(c.suppliers, p => [p.SupplierId])
 c.product_byunitprice = c.products.range_single(p => p.UnitPrice)
 c.product_bypackage = c.products.range_multiple_text(p => p.Package, stemmer)
 c.product_byisdiscontinued = c.products.range_single(p => p.IsDiscontinued)
-c.product_byorderitem = c.products.link(c.orderitems, p => c.orderitem_byproduct.lookup(p.Id))
+c.product_byorderitem = c.products.backward_link(c.orderitems, p => c.orderitem_byproduct.lookup(p.Id))
 
 c.order_byid = c.orders.range_single(o => o.Id)
 c.order_bytime = c.orders.range_single(o => o.ts)
-c.order_bycustomer = c.orders.link(c.customers, o => [o.CustomerId])
+c.order_bycustomer = c.orders.forward_link(c.customers, o => [o.CustomerId])
 c.order_bytotalamount = c.orders.range_single(o => o.TotalAmount)
 c.order_byordernumber = c.orders.range_single(o => o.OrderNumber)
-c.order_byorderitem = c.orders.link(c.orderitems, o => c.orderitem_byorder.lookup(o.Id))
+c.order_byorderitem = c.orders.backward_link(c.orderitems, o => c.orderitem_byorder.lookup(o.Id))
 
 c.customer_byid = c.customers.range_single(u => u.Id)
 c.customer_byfirstname = c.customers.range_single(u => u.FirstName)
@@ -264,28 +264,28 @@ c.customer_bylastname = c.customers.range_single(u => u.LastName)
 c.customer_city = c.customers.set_single(u => u.City)
 c.customer_country = c.customers.set_single(u => u.Country)
 c.customer_byphone = c.customers.range_single(u => u.Phone)
-c.customer_byorder = c.customers.link(c.orders, u => c.order_bycustomer.lookup(u.Id))
+c.customer_byorder = c.customers.backward_link(c.orders, u => c.order_bycustomer.lookup(u.Id))
 
 c.orderitem_byid = c.orderitems.range_single(i => i.Id)
-c.orderitem_byorder = c.orderitems.link(c.orders, i => [i.OrderId])
-c.orderitem_byproduct = c.orderitems.link(c.products, i => [i.ProductId])
+c.orderitem_byorder = c.orderitems.forward_link(c.orders, i => [i.OrderId])
+c.orderitem_byproduct = c.orderitems.forward_link(c.products, i => [i.ProductId])
 c.orderitem_byunitprice = c.orderitems.range_single(i => i.UnitPrice)
 c.orderitem_byquantity = c.orderitems.range_single(i => i.Quantity)
 c.orderitem_byprice = c.orderitems.range_single(i => i.UnitPrice * i.Quantity)
 
 await hub.emit('load projections')
 
-const orderitems_indicies = await c.orderitems.batch({ put: data.OrderItems })
-const orders_indicies = await c.orders.batch({ put: data.Orders })
-const customers_indicies = await c.customers.batch({ put: data.Customers })
-const products_indicies = await c.products.batch({ put: data.Products })
-const suppliers_indicies = await c.suppliers.batch({ put: data.Suppliers })
+const put = async (state, data) => {
+  const diff = {}
+  for (const key of Object.keys(data))
+    diff[key] = await state[key].batch({ put: data[key] })
+  for (const key of Object.keys(diff))
+    await state[key].batch_calculate_link_change(diff[key].link_change)
+  for (const key of Object.keys(diff))
+    await state[key].batch_calculate_selection_change(diff[key].selection_change)
+}
 
-await c.suppliers.batch_calculate_selection_change(suppliers_indicies)
-await c.products.batch_calculate_selection_change(products_indicies)
-await c.customers.batch_calculate_selection_change(customers_indicies)
-await c.orders.batch_calculate_selection_change(orders_indicies)
-await c.orderitems.batch_calculate_selection_change(orderitems_indicies)
+await put(c, data)
 
 await hub.emit('calculate projections')
 
@@ -310,17 +310,14 @@ print_cubes('Product Chartreuse verte')
 await c.orderitem_byid('1041')
 print_cubes('Maria Order')
 await c.product_byid(null)
-print_cubes('All Products')
+print_cubes('All products')
 await c.orderitem_byid(null)
 print_cubes('All Order Items')
 await c.supplier_country.shownulls()
 await c.supplier_country.selectall()
-print_cubes('All Suppliers')
+print_cubes('All suppliers')
 await c.customer_country.shownulls()
 await c.customer_country.selectall()
 print_cubes('All Customers')
-
-// const links = ['supplier_byproduct', 'product_bysupplier', 'product_byorderitem']
-
 
 })()

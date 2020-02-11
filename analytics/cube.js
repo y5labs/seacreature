@@ -63,7 +63,8 @@ module.exports = identity => {
       }
       for (const [target, dimension] of api.forward.entries()) {
         const diff = await dimension(payload)
-        if (diff.del.length > 0) await target.linkfilter({ del: diff.del })
+        if (diff.del.length > 0)
+          await target.linkfilter({ del: diff.del })
         await GC.collect(target, Array.from(new Set(payload.put.map(i => {
           const node = dimension.forward.get(i)
           if (!node) return []
@@ -73,6 +74,18 @@ module.exports = identity => {
     }
     if (candidates.length > 0)
       await GC.collect(api, candidates)
+  }
+
+  const createlink = (source, map) => {
+    if (source.forward.has(api))
+      throw new Error('Cubes are already linked')
+    const dimension = Link(api, map)
+    dimensions.push(dimension)
+    dimension.on('filter changed', p => onfiltered(p))
+    source.forward.set(api, dimension)
+    api.backward.set(source, dimension)
+    dimension.source = source
+    return dimension
   }
 
   const api = {
@@ -139,24 +152,13 @@ module.exports = identity => {
       // dimension.on('trace', p => hub.emit('trace', p))
       return dimension
     },
-    link: (source, map) => {
-      if (source.forward.has(api))
-        throw new Error('Cubes are already linked')
-      const dimension = Link(api, map)
-      dimensions.push(dimension)
-      dimension.on('filter changed', p => onfiltered(p))
-      source.forward.set(api, dimension)
-      api.backward.set(source, dimension)
-      dimension.source = source
-      return dimension
-    },
     backward_link: (source, map) => {
-      const dimension = api.link(source, map)
+      const dimension = createlink(source, map)
       backward_links.push(dimension)
       return dimension
     },
     forward_link: (source, map) => {
-      const dimension = api.link(source, map)
+      const dimension = createlink(source, map)
       forward_links.push(dimension)
       return dimension
     },
@@ -223,6 +225,7 @@ module.exports = identity => {
   }
   api.linkfilter = LinkFilter(api)
   dimensions.push(api.linkfilter)
+  internal_dimensions.push(api.linkfilter)
   api.linkfilter.on('filter changed', p => onfiltered(p))
   // api.linkfilter.on('trace', p => hub.emit('trace', p))
   const iterate = fn => function*() {
