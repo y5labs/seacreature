@@ -36,7 +36,6 @@ const state = {
 }
 
 state.supplier_byid = state.suppliers.range_single(s => s.Id)
-// this currently doesn't work, likely because the order of operations means it's not populated first.
 state.supplier_byproduct = state.suppliers.backward_link(state.products, s => state.product_bysupplier.lookup(s.Id))
 
 state.product_byid = state.products.range_single(p => p.Id)
@@ -82,6 +81,7 @@ const run = async fns => {
   fn('Order - 3')
   await state.product_byid('Drink')
   fn('Product - Drink')
+  // this, inproperly, shows all products and therefore suppliers
   await state.product_byid(null)
   fn('Product - null')
   await state.order_byid(null)
