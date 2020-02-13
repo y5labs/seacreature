@@ -94,6 +94,7 @@ module.exports = (cube, map) => {
       for (const key of keys) {
         const forwardnode = forward.get(key)
         forwardnode.delete(index)
+        forwardnode.total--
       }
       if (count > 0) diff.del.push(index)
       filterindex.set(index, null)
@@ -114,9 +115,11 @@ module.exports = (cube, map) => {
         backwardnode.add(key)
         if (!forward.has(key)) forward.set(key, {
           count: 0,
+          total: 0,
           indicies: new Set()
         })
         const forwardnode = forward.get(key)
+        forwardnode.total++
         forwardnode.indicies.add(index)
         count++
       }

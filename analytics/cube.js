@@ -63,8 +63,10 @@ module.exports = identity => {
       }
       for (const [target, dimension] of api.forward.entries()) {
         const diff = await dimension(payload)
-        if (diff.del.length > 0)
+        if (diff.del.length > 0) {
+          console.log(api.print(), target.print(), diff.del.map(target.i2id))
           await target.linkfilter({ del: diff.del })
+        }
         await GC.collect(target, Array.from(new Set(payload.put.map(i => {
           const node = dimension.forward.get(i)
           if (!node) return []

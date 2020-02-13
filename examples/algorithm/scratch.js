@@ -74,63 +74,57 @@ await put(state, data)
 //   fn('customer_byid(null)')
 // }
 
-const run = async fns => {
-  const fn = msg => fns.forEach(f => f(msg))
-  fn()
+let count = 0
+const run = async fn => {
+  const pf = () => perf((count++).toString())
+  fn(pf(), )
   await state.order_byid(3)
-  fn('Order - 3')
+  fn(pf(), 'Order - 3')
   await state.product_byid('Drink')
-  fn('Product - Drink')
+  fn(pf(), 'Product - Drink')
   // this, inproperly, shows all products and therefore suppliers
   await state.product_byid(null)
-  fn('Product - null')
+  fn(pf(), 'Product - null')
   await state.order_byid(null)
-  fn('Order - null')
+  fn(pf(), 'Order - null')
 }
 
 perf()
 
-const cube_table = []
 const cubes = ['suppliers', 'products', 'orders', 'customers']
 const cube_desc = ['SUPP', 'PROD', 'ORDER', 'CUSTOMR']
 const cube_paddings = [6, 8, 12, 7]
-let count = 0
-const print_cubes = msg => {
-  const e = perf((count++).toString())
-  cube_table.push('│ ' + cubes.map((id, index) => Array.from(state[id].filtered(Infinity)).map(d =>state[id].identity(d).toString()[0]).join(' ').padEnd(cube_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
-}
+
+const link_dests = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
+const link_dest_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
+const link_dest_paddings = [6, 8, 8, 12, 12, 6]
+
+const link_srcs = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
+const link_src_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
+const link_src_paddings = [8, 6, 12, 8, 10, 6]
+
+const cube_table = []
 cube_table.push('╭' + Array(68).fill('─').join('') + '╮')
 cube_table.push('│ ' + cubes.map((id, index) => cube_desc[index].padEnd(cube_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
 cube_table.push('├' + Array(68).fill('─').join('') + '┤')
 
 const link_dest_table = []
-const link_dests = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
-const link_dest_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
-const link_dest_paddings = [6, 8, 8, 12, 12, 6]
-const print_link_dests = msg => {
-  const e = perf((count++).toString())
-  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
-}
 link_dest_table.push('╭' + Array(88).fill('─').join('') + '╮')
 link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join('') + '│'.padStart(36, ' '))
 link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
 link_dest_table.push('├' + Array(88).fill('─').join('') + '┤')
 
 const link_src_table = []
-const link_srcs = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
-const link_src_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
-const link_src_paddings = [8, 6, 12, 8, 10, 6]
-const print_link_srcs = msg => {
-  const e = perf((count++).toString())
-  link_src_table.push('│ ' + link_srcs.map((id, index) => Array.from(state[id].forward.values(), i => i.count).join(' ').padEnd(link_src_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
-}
 link_src_table.push('╭' + Array(88).fill('─').join('') + '╮')
 link_src_table.push('│ ' + link_srcs.map((id, index) => link_src_desc[index].padEnd(link_src_paddings[index], ' ')).join('') + '│'.padStart(38, ' '))
 link_src_table.push('│ ' + link_srcs.map((id, index) => Array.from(state[id].forward.keys(), i => i.toString()[0]).join(' ').padEnd(link_src_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
 link_src_table.push('├' + Array(88).fill('─').join('') + '┤')
 
-
-await run([print_cubes, print_link_dests, print_link_srcs])
+await run((e, msg) => {
+  cube_table.push('│ ' + cubes.map((id, index) => Array.from(state[id].filtered(Infinity)).map(d =>state[id].identity(d).toString()[0]).join(' ').padEnd(cube_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
+  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
+  link_src_table.push('│ ' + link_srcs.map((id, index) => Array.from(state[id].forward.values(), i => i.count).join(' ').padEnd(link_src_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
+})
 
 
 cube_table.push('╰' + Array(68).fill('─').join('') + '╯')
