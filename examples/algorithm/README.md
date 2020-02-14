@@ -1,8 +1,7 @@
 # Product Model Seacreature Example
 
-Once the root has been found, need to be more carefull when turning on... it may relate to incoming refs as well.
-
-Refactor - don't use link.backward, use cube.backward.get(xxx)
-
-
-Need to take into account filterindex along with count!
+put heuristic
+1. Reset all link and linkfilters
+2. This is allowed to propigate
+3. Re-apply any existing internal filters dels into link changes
+4. Propigate these changes

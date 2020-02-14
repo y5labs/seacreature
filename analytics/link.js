@@ -16,7 +16,6 @@ module.exports = (cube, map) => {
     for (const key of del) {
       if (!forward.has(key)) continue
       const node = forward.get(key)
-      // TODO remove
       node.count--
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
@@ -29,7 +28,6 @@ module.exports = (cube, map) => {
     for (const key of put) {
       if (!forward.has(key)) continue
       const node = forward.get(key)
-      // TODO remove
       node.count++
       for (const index of node.indicies.keys()) {
         const current = filterindex.get(index)
@@ -48,6 +46,32 @@ module.exports = (cube, map) => {
       put: Array.from(diff.put),
       del: Array.from(diff.del)
     }
+  }
+  api.reset = () => {
+    const result = new Set()
+    console.log('reset 1', cube.print(), Array.from(forward.entries()).map(([key, node]) => `${key} ${node.count}/${node.total} ${Array.from(node.indicies.keys(), cube.i2id).join(', ')}`))
+    for (const [key, node] of forward.entries()) {
+      node.count = node.total
+      for (const index of node.indicies.keys()) {
+        const current = filterindex.get(index)
+        result.add(index)
+        current.count = current.total
+      }
+    }
+    console.log('reset 2', Array.from(result).map(cube.i2id))
+    return Array.from(result)
+    // if (!forward.has(key)) continue
+    //   const node = forward.get(key)
+    //   // TODO remove
+    //   node.count++
+    //   for (const index of node.indicies.keys()) {
+    //     const current = filterindex.get(index)
+    //     if (current.count === 0) {
+    //       diff.del.delete(index)
+    //       diff.put.add(index)
+    //     }
+    //     current.count++
+    //   }
   }
   api.lookup = key =>
     !forward.has(key) ? []

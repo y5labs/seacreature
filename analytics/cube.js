@@ -10,6 +10,21 @@ const GC = require('./gc')
 const text = require('./text')
 const Hub = require('../lib/hub')
 
+const visit = async (cube, fn) => {
+  const seen = new Set()
+  const tovisit = new Set([cube])
+  while (tovisit.size > 0) {
+    const visiting = Array.from(tovisit)
+    tovisit.clear()
+    for (const current of visiting) {
+      seen.add(current)
+      await fn(current)
+      for (const forward of current.forward.keys())
+        if (!seen.has(forward)) tovisit.add(forward)
+    }
+  }
+}
+
 module.exports = identity => {
   const hub = Hub()
   const data = new Map()
@@ -50,13 +65,28 @@ module.exports = identity => {
     }
 
     await hub.emit('filter changed', { bitindex, put, del })
+    await hub.emit('selection changed', {
+      put: diff.put.map(i2d),
+      del: diff.del.map(i2d)
+    })
 
-    GC.clear(api)
-    if (diff.put.length > 0 || diff.del.length > 0) {
-      await hub.emit('selection changed', {
-        put: diff.put.map(i2d),
-        del: diff.del.map(i2d)
+    if (candidates.length > 0) {
+      await visit(api, async cube => {
+        for (const [target, dimension] of cube.forward.entries()) {
+          const changes = await dimension.reset()
+          if (changes.length > 0) {
+            await target.linkfilter({ put: changes })
+          console.log(target.print(), '+', changes.map(i => target.i2id(i) + target.filterbits[0][i]))
+          }
+        }
       })
+      await visit(api, async cube => {
+        console.log(Array.from(cube.hiddenids()))
+      })
+      return
+    }
+
+    if (diff.put.length > 0 || diff.del.length > 0) {
       const payload = {
         put: diff.put.map(i2id),
         del: diff.del.map(i2id)
@@ -64,18 +94,17 @@ module.exports = identity => {
       for (const [target, dimension] of api.forward.entries()) {
         const diff = await dimension(payload)
         if (diff.del.length > 0) {
-          console.log(api.print(), target.print(), diff.del.map(target.i2id))
           await target.linkfilter({ del: diff.del })
         }
-        await GC.collect(target, Array.from(new Set(payload.put.map(i => {
-          const node = dimension.forward.get(i)
-          if (!node) return []
-          return Array.from(node.indicies.keys())
-        }).flat())))
+        // await GC.collect(target, Array.from(new Set(payload.put.map(i => {
+        //   const node = dimension.forward.get(i)
+        //   if (!node) return []
+        //   return Array.from(node.indicies.keys())
+        // }).flat())))
       }
     }
-    if (candidates.length > 0)
-      await GC.collect(api, candidates)
+    // if (candidates.length > 0)
+    //   await GC.collect(api, candidates)
   }
 
   const createlink = (source, map) => {
@@ -241,5 +270,17 @@ module.exports = identity => {
   api.highlighted = iterate(i => filterbits.zero(i))
   api.filtered = iterate(i => filterbits.zero(i))
   api.unfiltered = iterate(i => true)
+  api.hiddenids = function*() {
+    const iterator = index[Symbol.iterator]()
+    let i = iterator.next()
+    while (!i.done) {
+      if (filterbits.zeroExcept(i.value, api.linkfilter.bitindex.offset, api.linkfilter.bitindex.one)) {
+        i = iterator.next()
+        continue
+      }
+      yield i2id(i.value)
+      i = iterator.next()
+    }
+  }
   return api
 }

@@ -77,14 +77,23 @@ await put(state, data)
 let count = 0
 const run = async fn => {
   const pf = () => perf((count++).toString())
-  fn(pf(), )
+  fn(pf())
+  console.log('Order - 3')
   await state.order_byid(3)
   fn(pf(), 'Order - 3')
+  console.log('Product - Drink')
   await state.product_byid('Drink')
   fn(pf(), 'Product - Drink')
   // this, inproperly, shows all products and therefore suppliers
+  console.log('Product - null')
   await state.product_byid(null)
+  console.log(
+    'Check',
+    state.products.filterbits[state.product_byid.bitindex.offset][state.products.id2i('Eggplant')] & state.product_byid.bitindex.one,
+    state.products.filterbits[state.product_bysupplier.bitindex.offset][state.products.id2i('Eggplant')] & state.product_bysupplier.bitindex.one
+  )
   fn(pf(), 'Product - null')
+  console.log('Order - null')
   await state.order_byid(null)
   fn(pf(), 'Order - null')
 }
