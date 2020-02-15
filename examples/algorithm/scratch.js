@@ -53,6 +53,7 @@ const put = async (state, data) => {
   const diff = {}
   for (const key of Object.keys(data))
     diff[key] = await state[key].batch({ put: data[key] })
+  // console.log('DIFF', JSON.stringify(diff, null, 2))
   for (const key of Object.keys(diff))
     await state[key].batch_calculate_link_change(diff[key].link_change)
   for (const key of Object.keys(diff))
@@ -123,29 +124,19 @@ link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index
 link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
 link_dest_table.push('├' + Array(88).fill('─').join('') + '┤')
 
-const link_src_table = []
-link_src_table.push('╭' + Array(88).fill('─').join('') + '╮')
-link_src_table.push('│ ' + link_srcs.map((id, index) => link_src_desc[index].padEnd(link_src_paddings[index], ' ')).join('') + '│'.padStart(38, ' '))
-link_src_table.push('│ ' + link_srcs.map((id, index) => Array.from(state[id].forward.keys(), i => i.toString()[0]).join(' ').padEnd(link_src_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
-link_src_table.push('├' + Array(88).fill('─').join('') + '┤')
-
 await run((e, msg) => {
   cube_table.push('│ ' + cubes.map((id, index) => Array.from(state[id].filtered(Infinity)).map(d =>state[id].identity(d).toString()[0]).join(' ').padEnd(cube_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
   link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
-  link_src_table.push('│ ' + link_srcs.map((id, index) => Array.from(state[id].forward.values(), i => i.count).join(' ').padEnd(link_src_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
 })
 
 
 cube_table.push('╰' + Array(68).fill('─').join('') + '╯')
 link_dest_table.push('╰' + Array(88).fill('─').join('') + '╯')
-link_src_table.push('╰' + Array(88).fill('─').join('') + '╯')
 
 console.log()
 console.log(cube_table.join('\n'))
-console.log()
+console.log('FILTERINDEX')
 console.log(link_dest_table.join('\n'))
-console.log()
-console.log(link_src_table.join('\n'))
 console.log()
 
 })()

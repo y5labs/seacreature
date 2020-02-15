@@ -6,7 +6,6 @@ const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
 const Link = require('./link')
 const LinkFilter = require('./linkfilter')
-const GC = require('./gc')
 const text = require('./text')
 const Hub = require('../lib/hub')
 
@@ -49,7 +48,7 @@ module.exports = identity => {
     if (put.length == 0 && del.length == 0) return
 
     const diff = { put: [], del: [] }
-    const candidates = []
+    let shouldrecalc = false
 
     for (const i of del) {
       filterbits[bitindex.offset][i] |= bitindex.one
@@ -60,7 +59,7 @@ module.exports = identity => {
       if (filterbits.only(i, bitindex.offset, bitindex.one))
         diff.put.push(i)
       if (filterbits.onlyExcept(i, api.linkfilter.bitindex.offset, ~api.linkfilter.bitindex.one, bitindex.offset, bitindex.one))
-        candidates.push(i)
+        shouldrecalc = true
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
@@ -70,41 +69,30 @@ module.exports = identity => {
       del: diff.del.map(i2d)
     })
 
-    if (candidates.length > 0) {
+    const applydel = async (cube, del) => {
+      for (const [target, dimension] of cube.forward.entries()) {
+        const changes = await dimension({ del: del.map(cube.i2id) })
+        if (changes.del.length > 0) {
+          await target.linkfilter({ del: changes.del })
+        }
+      }
+    }
+
+    if (shouldrecalc) {
       await visit(api, async cube => {
         for (const [target, dimension] of cube.forward.entries()) {
           const changes = await dimension.reset()
-          if (changes.length > 0) {
+          if (changes.length > 0)
             await target.linkfilter({ put: changes })
-          console.log(target.print(), '+', changes.map(i => target.i2id(i) + target.filterbits[0][i]))
-          }
         }
       })
       await visit(api, async cube => {
-        console.log(Array.from(cube.hiddenids()))
+        await applydel(cube, Array.from(cube.hiddenindicies()))
       })
       return
     }
-
-    if (diff.put.length > 0 || diff.del.length > 0) {
-      const payload = {
-        put: diff.put.map(i2id),
-        del: diff.del.map(i2id)
-      }
-      for (const [target, dimension] of api.forward.entries()) {
-        const diff = await dimension(payload)
-        if (diff.del.length > 0) {
-          await target.linkfilter({ del: diff.del })
-        }
-        // await GC.collect(target, Array.from(new Set(payload.put.map(i => {
-        //   const node = dimension.forward.get(i)
-        //   if (!node) return []
-        //   return Array.from(node.indicies.keys())
-        // }).flat())))
-      }
-    }
-    // if (candidates.length > 0)
-    //   await GC.collect(api, candidates)
+    else if (diff.del.length > 0)
+      await applydel(api, diff.del)
   }
 
   const createlink = (source, map) => {
@@ -270,15 +258,15 @@ module.exports = identity => {
   api.highlighted = iterate(i => filterbits.zero(i))
   api.filtered = iterate(i => filterbits.zero(i))
   api.unfiltered = iterate(i => true)
-  api.hiddenids = function*() {
+  api.hiddenindicies = function*() {
     const iterator = index[Symbol.iterator]()
     let i = iterator.next()
     while (!i.done) {
-      if (filterbits.zeroExcept(i.value, api.linkfilter.bitindex.offset, api.linkfilter.bitindex.one)) {
+      if (filterbits.zeroExcept(i.value, api.linkfilter.bitindex.offset, ~api.linkfilter.bitindex.one)) {
         i = iterator.next()
         continue
       }
-      yield i2id(i.value)
+      yield i.value
       i = iterator.next()
     }
   }
