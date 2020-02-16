@@ -25,12 +25,46 @@ body
   grid-template-rows 3.75rem auto
   padding-bottom 5rem
 
-table
-  td
-    padding 0.5rem
-    vertical-align top
-    font-size 11px
+.cols
+  display flex
+.cols + .cols
+  border-top 1px solid $primary
+
+.box
+  overflow auto
+  padding 0.5rem
+  h2
+    margin 0
+
+.bar
+  display inline-block
+  height 0.5rem
+  margin-right 1rem
+  background-color #0091CD
+  &.blank
+    background-color transparent
+  &.red
+    background-color #D81F38
+  &.green
+    background-color #30C100
+
+.bar + .bar
+  margin-left -1rem
 
 ul
   list-style-type none
-  padding-left 0
+  padding 0
+
+table
+  margin 1rem 0
+  th
+    text-align left
+    font-weight normal
+    vertical-align top
+    padding 0.5rem 3rem 0.5rem 0
+    h2
+      margin 0
+  td
+    padding-right 1rem
+    &.d
+      text-align right

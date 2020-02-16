@@ -5,3 +5,4 @@ inject('route', { path: '/seacreature/', component: () => import('./dashboard.js
 
 import './cube'
 import './actions'
+import './projections'

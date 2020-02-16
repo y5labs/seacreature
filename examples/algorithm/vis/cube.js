@@ -6,90 +6,64 @@ const stemmer = require('stemmer')
 const Cube = require('seacreature/analytics/cube')
 const numeral = require('numeral')
 
-let c = null
-
 inject('pod', ({ hub, state }) => {
   hub.on('load cube', async () => {
-    if (c) return
-    state.cube = c = {}
-    state.filters = {}
+    if (state.cube) return
 
     const data = {
-      Orders: [
-        { Id: 'Bob', ProductIds: ['Beer'] },
-        { Id: 'Bruce', ProductIds: ['Beer'] },
-        { Id: 'Sue', ProductIds: ['Oranges'] },
-        { Id: 'Mary', ProductIds: ['Apples', 'Beer'] }
-      ],
-      Products: [
-        { Id: 'Beer', SupplierId: 'Bottle-O' },
-        { Id: 'Oranges', SupplierId: 'Vege Bin' },
-        { Id: 'Apples', SupplierId: 'Vege Bin' }
-      ],
-      Suppliers: [
+      suppliers: [
         { Id: 'Bottle-O' },
         { Id: 'Vege Bin' }
+      ],
+      products: [
+        { Id: 'Drink', SupplierId: 'Bottle-O' },
+        { Id: 'Oranges', SupplierId: 'Vege Bin' },
+        { Id: 'Eggplant', SupplierId: 'Vege Bin' }
+      ],
+      orders: [
+        { Id: 1, CustomerId: 'Paul', ProductIds: ['Drink'] },
+        { Id: 2, CustomerId: 'Andy', ProductIds: ['Drink'] },
+        { Id: 3, CustomerId: 'Mary', ProductIds: ['Drink', 'Oranges'] },
+        { Id: 4, CustomerId: 'Mary', ProductIds: ['Eggplant'] },
+        { Id: 5, CustomerId: 'Sue', ProductIds: ['Eggplant'] }
+      ],
+      customers: [
+        { Id: 'Paul' },
+        { Id: 'Andy' },
+        { Id: 'Mary' },
+        { Id: 'Sue' }
       ]
     }
 
-    c.suppliers = Cube(s => s.Id)
-    c.products = Cube(p => p.Id)
-    c.orders = Cube(o => o.Id)
-
-    c.supplier_byid = c.suppliers.range_single(s => s.Id)
-    c.supplier_byproduct = c.suppliers.link(c.products, s => c.product_bysupplier.lookup(s.Id))
-
-    c.product_byid = c.products.range_single(p => p.Id)
-    c.product_bysupplier = c.products.link(c.suppliers, p => [p.SupplierId])
-    c.product_byorder = c.products.link(c.orders, p => c.order_byproduct.lookup(p.Id))
-
-    c.order_byid = c.orders.range_single(o => o.Id)
-    c.order_byproduct = c.orders.link(c.products, o => o.ProductIds)
-
-    c.traces = []
-
-    const orders_indicies = await c.orders.batch({ put: data.Orders })
-    const products_indicies = await c.products.batch({ put: data.Products })
-    const suppliers_indicies = await c.suppliers.batch({ put: data.Suppliers })
-
-    await c.suppliers.batch_calculate_selection_change(suppliers_indicies)
-    await c.products.batch_calculate_selection_change(products_indicies)
-    await c.orders.batch_calculate_selection_change(orders_indicies)
-
-
-    let count = 1
-    let current = []
-    hub.on('push trace', () => {
-      c.traces.push(current)
-      current = []
-    })
-    const rec = async p => {
-      p.count = count
-      count++
-      current.push(p)
+    state.cube = {
+      suppliers: Cube(s => s.Id),
+      products: Cube(p => p.Id),
+      orders: Cube(o => o.Id),
+      customers: Cube(c => c.Id)
     }
-    c.suppliers.on('trace', rec)
-    c.products.on('trace', rec)
-    c.orders.on('trace', rec)
 
-    await c.order_byid('Sue')
-    state.filters.orderbyid = 'Sue'
-    await c.product_byid('Oranges')
-    state.filters.productbyid = 'Oranges'
-    await c.supplier_byid('Vege Bin')
-    state.filters.supplierbyid = 'Vege Bin'
-    await c.product_byid(null)
-    delete state.filters.productbyid
-    await c.order_byid(null)
-    delete state.filters.orderbyid
+    state.cube.supplier_byid = state.cube.suppliers.range_single(s => s.Id)
+    state.cube.supplier_byproduct = state.cube.suppliers.backward_link(state.cube.products, s => state.cube.product_bysupplier.lookup(s.Id))
 
+    state.cube.product_byid = state.cube.products.range_single(p => p.Id)
+    state.cube.product_bysupplier = state.cube.products.forward_link(state.cube.suppliers, p => [p.SupplierId])
+    state.cube.product_byorder = state.cube.products.backward_link(state.cube.orders, p => state.cube.order_byproduct.lookup(p.Id))
 
-    // await c.supplier_byid('Vege Bin')
-    // state.filters.supplierbyid = 'Vege Bin'
-    // await hub.emit('push trace')
-    // await c.supplier_byid(null)
-    // delete state.filters.supplierbyid
+    state.cube.order_byid = state.cube.orders.range_single(o => o.Id)
+    state.cube.order_byproduct = state.cube.orders.forward_link(state.cube.products, o => o.ProductIds)
+    state.cube.order_bycustomer = state.cube.orders.forward_link(state.cube.customers, o => [o.CustomerId])
 
-    await hub.emit('push trace')
+    state.cube.customer_byid = state.cube.customers.range_single(cu => cu.Id)
+    state.cube.customer_byorder = state.cube.customers.backward_link(state.cube.orders, cu => state.cube.order_bycustomer.lookup(cu.Id))
+
+    const diff = {}
+    for (const key of Object.keys(data))
+      diff[key] = await state.cube[key].batch({ put: data[key] })
+    for (const key of Object.keys(diff))
+      await state.cube[key].batch_calculate_link_change(diff[key].link_change)
+    for (const key of Object.keys(diff))
+      await state.cube[key].batch_calculate_selection_change(diff[key].selection_change)
+
+    await hub.emit('calculate projections')
   })
 })

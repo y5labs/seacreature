@@ -9,83 +9,47 @@ export default component({
       e.preventDefault()
       hub.emit(...args)
     }
-    const cube = id => h('td', [
-      state.filters[`${id}byid`]
-        ? h('a', { on: { click: emit(`filter ${id} by id`, null) }, attrs: { href: '#' } }, `Clear ${state.filters[`${id}byid`]}`)
-        : [],
-      h('ul', Array.from(state.cube[`${id}_byid`].unfiltered(Infinity),
-        s => {
-          const cube = state.cube[`${id}s`]
-          const i = cube.id2i(s[0])
-          const filterbit = cube.filterbits[0][i].toString(2)
-          if (filterbit > 0)
-            return h('li', `${s[1].Id} (${filterbit})`)
-          else
-            return h('li', [ h('a', { on: { click: emit(`filter ${id} by id`, s[0]) }, attrs: { href: '#' } }, `${s[1].Id} (${filterbit})`)])
-        }))
-    ])
-    const link = (from, to) => {
-      const link = state.cube[`${to}_by${from}`]
-      const cube = state.cube[`${to}s`]
-      return h('td', [
-        h('ul', Array.from(link.forward.entries(), ([external, node]) =>
-          Array.from(node.indicies, index =>
-            h('li', `${external} (${node.count}) => ${cube.i2id(index)} (${link.filterindex.get(index)})`))))
+    return h('div', [
+      h('div.cols', [
+        h('div.box', [
+          h('h2', 'Suppliers'),
+          state.filters.supplierbyid
+            ? h('a', { on: { click: emit('filter supplier by id', null) }, attrs: { href: '#' } }, `Clear ${state.filters.supplierbyid}`)
+            : [],
+          h('ul', Array.from(state.cube.supplier_byid.filtered(Infinity),
+            s => h('li', [ h('a', { on: { click: emit('filter supplier by id', s[1].Id) }, attrs: { href: '#' } }, s[1].Id)])))
+        ]),
+        h('div.box', [
+          h('h2', 'Products'),
+          state.filters.productbyid
+            ? h('a', { on: { click: emit('filter product by id', null) }, attrs: { href: '#' } }, `Clear ${state.filters.productbyid}`)
+            : [],
+          h('ul', Array.from(state.cube.product_byid.filtered(Infinity),
+            s => h('li', [ h('a', { on: { click: emit('filter product by id', s[1].Id) }, attrs: { href: '#' } }, s[1].Id)])))
+        ]),
+        h('div.box', [
+          h('h2', 'Orders'),
+          state.filters.orderbyid
+            ? h('a', { on: { click: emit('filter order by id', null) }, attrs: { href: '#' } }, `Clear ${state.filters.orderbyid}`)
+            : [],
+          h('ul', Array.from(state.cube.order_byid.filtered(Infinity),
+            s => h('li', [ h('a', { on: { click: emit('filter order by id', s[1].Id) }, attrs: { href: '#' } }, [
+              s[1].Id,
+              ' ',
+              s[1].CustomerId,
+              ' ',
+              s[1].ProductIds.join(', ')
+            ])])))
+        ]),
+        h('div.box', [
+          h('h2', 'Customers'),
+          state.filters.customerbyid
+            ? h('a', { on: { click: emit('filter customer by id', null) }, attrs: { href: '#' } }, `Clear ${state.filters.customerbyid}`)
+            : [],
+          h('ul', Array.from(state.cube.customer_byid.filtered(Infinity),
+            cu => h('li', [ h('a', { on: { click: emit('filter customer by id', cu[1].Id) }, attrs: { href: '#' } }, cu[1].Id)])))
+        ])
       ])
-    }
-    const empty = () => h('td', [])
-    return h('table', [
-      h('tr', [
-        h('th', 'O'),
-        h('th', 'OP'),
-        h('th', 'PO'),
-        h('th', 'P'),
-        h('th', 'PS'),
-        h('th', 'SP'),
-        h('th', 'S')
-      ]),
-      h('tr', [
-        cube('order'),
-        link('product', 'order'),
-        link('order', 'product'),
-        cube('product'),
-        link('supplier', 'product'),
-        link('product', 'supplier'),
-        cube('supplier')
-      ]),
-      ...state.cube.traces.map(trace => {
-        const tracelink = (from, to) => h('td', [
-          h('ul', trace
-            .filter(t => t.op == 'gc dimension'
-              && t.source == from[0]
-              && t.target == to[0])
-            .map(t => h('li', `${t.count} ${t.id} ${t.desc}`))),
-          h('ul', trace
-            .filter(t => t.op.indexOf('link') != -1
-              && t.source == from[0]
-              && t.target == to[0])
-            .map(t => h('li', `${t.count} ${t.op[0]} ${t.key} => ${t.index} (${t.current})`)))
-        ])
-        const tracecube = id => h('td', [
-          h('ul', trace
-            .filter(t => t.op == 'gc cube'
-              && t.target == id)
-            .map(t => h('li', `${t.count} ${t.id} ${t.desc}${t.ref ? ` (${t.ref})` : ''}`))),
-          h('ul', trace
-            .filter(t => t.op.indexOf('ref') != -1
-              && t.target == id)
-            .map(t => h('li', `${t.count} ${t.op[0]} ${t.id}`)))
-        ])
-        return h('tr', [
-          tracecube('o'),
-          tracelink('product', 'order'),
-          tracelink('order', 'product'),
-          tracecube('p'),
-          tracelink('supplier', 'product'),
-          tracelink('product', 'supplier'),
-          tracecube('s')
-        ])
-      })
     ])
   }
 })
