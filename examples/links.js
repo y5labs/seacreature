@@ -2,7 +2,7 @@
 
 const level = require('level-mem')
 const db = level('data/scratch')
-const links = require('seacreature/persistence/links')
+const links = require('seacreature/transactional/links')
 const link = links(db, 'link')
 
 const dump = () => new Promise((resolve, reject) => {
