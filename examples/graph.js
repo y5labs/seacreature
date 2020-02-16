@@ -12,7 +12,7 @@ const graph1 = bacon1(dataset)
 
 const level = require('level')
 const db = level('data/scratch')
-const bacon2 = require('seacreature/persistence/graph')
+const bacon2 = require('seacreature/transactional/graph')
 const graph2 = bacon2(db, 'graph')
 await graph2.open()
 
