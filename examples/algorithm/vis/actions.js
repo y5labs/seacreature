@@ -71,10 +71,8 @@ inject('pod', ({ hub, state }) => {
       ProductIds: ['Eggplant']
     }] })
     index++
-    for (const key of Object.keys(diff))
-      await state.cube.orders.batch_calculate_link_change(diff.link_change)
-    for (const key of Object.keys(diff))
-      await state.cube.orders.batch_calculate_selection_change(diff.selection_change)
+    await state.cube.orders.batch_calculate_link_change(diff.link_change)
+    await state.cube.orders.batch_calculate_selection_change(diff.selection_change)
     release()
     await hub.emit('calculate projections')
     await hub.emit('update')

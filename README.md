@@ -15,7 +15,7 @@ This is a developer friendly framework and includes libraries that can used in a
 
 
 # Todo
-- [ ] Does analytics live updating work?
+- [ ] Fix analytics live updating. Things need to come out of null for links.
 - [ ] Should we consider PowerBI's 'highlight' functionality?
 - [ ] Update documentation to include analytics
 - [ ] Update documentation to include transactional

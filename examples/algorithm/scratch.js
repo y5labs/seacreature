@@ -17,8 +17,7 @@ const data = {
     { Id: 1, CustomerId: 'Paul', ProductIds: ['Drink'] },
     { Id: 2, CustomerId: 'Andy', ProductIds: ['Drink'] },
     { Id: 3, CustomerId: 'Mary', ProductIds: ['Drink', 'Oranges'] },
-    { Id: 4, CustomerId: 'Mary', ProductIds: ['Eggplant'] },
-    { Id: 5, CustomerId: 'Sue', ProductIds: ['Eggplant'] }
+    { Id: 4, CustomerId: 'Mary', ProductIds: ['Eggplant'] }
   ],
   customers: [
     { Id: 'Paul' },
@@ -88,15 +87,19 @@ const run = async fn => {
   // this, inproperly, shows all products and therefore suppliers
   console.log('Product - null')
   await state.product_byid(null)
-  console.log(
-    'Check',
-    state.products.filterbits[state.product_byid.bitindex.offset][state.products.id2i('Eggplant')] & state.product_byid.bitindex.one,
-    state.products.filterbits[state.product_bysupplier.bitindex.offset][state.products.id2i('Eggplant')] & state.product_bysupplier.bitindex.one
-  )
   fn(pf(), 'Product - null')
   console.log('Order - null')
   await state.order_byid(null)
   fn(pf(), 'Order - null')
+  const diff = await state.orders.batch({ put: [{
+    Id: 5,
+    CustomerId: 'Sue',
+    ProductIds: ['Eggplant']
+  }] })
+  console.log(JSON.stringify(diff, null, 2))
+  await state.orders.batch_calculate_link_change(diff.link_change)
+  await state.orders.batch_calculate_selection_change(diff.selection_change)
+  fn(pf(), 'New order')
 }
 
 perf()
@@ -107,11 +110,7 @@ const cube_paddings = [6, 8, 12, 7]
 
 const link_dests = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
 const link_dest_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
-const link_dest_paddings = [6, 8, 8, 12, 12, 6]
-
-const link_srcs = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
-const link_src_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']
-const link_src_paddings = [8, 6, 12, 8, 10, 6]
+const link_dest_paddings = [6, 8, 8, 12, 12, 7]
 
 const cube_table = []
 cube_table.push('╭' + Array(68).fill('─').join('') + '╮')
@@ -120,7 +119,7 @@ cube_table.push('├' + Array(68).fill('─').join('') + '┤')
 
 const link_dest_table = []
 link_dest_table.push('╭' + Array(88).fill('─').join('') + '╮')
-link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join('') + '│'.padStart(36, ' '))
+link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join('') + '│'.padStart(35, ' '))
 link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
 link_dest_table.push('├' + Array(88).fill('─').join('') + '┤')
 

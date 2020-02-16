@@ -181,8 +181,8 @@ module.exports = identity => {
       forward_links.push(dimension)
       return dimension
     },
-    batch_calculate_link_change: ({ indicies, put, del }) => {
-      for (const d of backward_links) d.batch(indicies, put, del)
+    batch_calculate_link_change: async ({ indicies, put, del }) => {
+      for (const d of backward_links) await d.batch(indicies, put, del)
     },
     batch_calculate_selection_change: async ({ put, del }) => {
       if (put.length == 0 && del.length == 0) return
