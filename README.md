@@ -7,28 +7,11 @@ Seacreature aims to be an end-to-end framework to represent some of the hardest 
 
 This is a developer friendly framework and includes libraries that can used in a solution. There is no UI.
 
-## [Flow](https://github.com/tcoats/seacreature/tree/master/flow)
-Transient event processing inspired by [Riemann](http://riemann.io). The API is similar to the [Riemann streams API](http://riemann.io/api/riemann.streams.html) and [Riemann streams source](https://github.com/riemann/riemann/blob/master/src/riemann/streams.clj).
+**[Flow](https://github.com/tcoats/seacreature/tree/master/flow)** — Transient event processing inspired by [Riemann](http://riemann.io). The API is similar to the [Riemann streams API](http://riemann.io/api/riemann.streams.html) and [Riemann streams source](https://github.com/riemann/riemann/blob/master/src/riemann/streams.clj). Nearly production ready.
 
-Late beta.
+**[Analytics](https://github.com/tcoats/seacreature/tree/master/analytics)** — [OLAP](https://en.wikipedia.org/wiki/Online_analytical_processing) style multi-dimenensional business analysis inspired by [crossfilter](https://github.com/crossfilter/crossfilter) and [PowerBI](https://powerbi.microsoft.com/). Early beta.
 
-`require('seacreature/flow')`
-
-## [Analytics](https://github.com/tcoats/seacreature/tree/master/analytics)
-
-[OLAP](https://en.wikipedia.org/wiki/Online_analytical_processing) style multi-dimenensional business analysis inspired by [crossfilter](https://github.com/crossfilter/crossfilter) and [PowerBI](https://powerbi.microsoft.com/).
-
-Early beta.
-
-`require('seacreature/analytics/cube') ...etc`
-
-## [Transactional](https://github.com/tcoats/seacreature/tree/master/transactional)
-
-Double entry, batched transactions with auto calculating dimension hierarchy. Inspired by accounting systems and [ERPs](https://en.wikipedia.org/wiki/Enterprise_resource_planning).
-
-Alpha.
-
-`require('seacreature/transactional/dimensions') ...etc`
+**[Transactional](https://github.com/tcoats/seacreature/tree/master/transactional)** — Double entry, batched transactions with auto calculating dimension hierarchy. Inspired by accounting systems and [ERPs](https://en.wikipedia.org/wiki/Enterprise_resource_planning). Early functionality available.
 
 
 # Todo
