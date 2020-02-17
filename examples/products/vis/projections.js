@@ -35,6 +35,25 @@ inject('pod', ({ hub, state }) => {
     rec_counts(state.cube.customers, 'customer')
 
     // project data
+    state.cube.countrybycustomercount = {}
+    state.cube.customers.on('selection changed', ({ put, del }) => {
+      del.forEach(customer => {
+        pathie.assign(state.cube.countrybycustomercount, [customer.Country], c => (c || 0) - 1)
+      })
+      put.forEach(customer => {
+        pathie.assign(state.cube.countrybycustomercount, [customer.Country], c => (c || 0) + 1)
+      })
+    })
+    state.cube.countrybysuppliercount = {}
+    state.cube.suppliers.on('selection changed', ({ put, del }) => {
+      del.forEach(supplier => {
+        pathie.assign(state.cube.countrybysuppliercount, [supplier.Country], c => (c || 0) - 1)
+      })
+      put.forEach(supplier => {
+        pathie.assign(state.cube.countrybysuppliercount, [supplier.Country], c => (c || 0) + 1)
+      })
+    })
+
     state.cube.countrybyspendposition = {}
     state.cube.customerbyspend = {}
     state.cube.countrybycustomerspend = {}

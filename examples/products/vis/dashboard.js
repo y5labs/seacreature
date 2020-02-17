@@ -113,7 +113,7 @@ export default component({
         h('table', [
           h('tr', [
             h('th', []),
-            h('th', { attrs: { colspan: 2 } }, [
+            h('th', { attrs: { colspan: 3 } }, [
               h('h2', [h('a', { on: { click: emit('sort country by', 'supplier') }, attrs: { href: '#' } }, [
                 'Supplier spend ',
                 h('small', `${zipped.supplier.count}/${zipped.supplier.total}`)
@@ -125,7 +125,7 @@ export default component({
             h('th', { attrs: { colspan: 2 } }, [
               h('h2', [h('a', { on: { click: emit('sort country by', 'position') }, attrs: { href: '#' } }, 'Spend position ')])
             ]),
-            h('th', { attrs: { colspan: 2 } }, [
+            h('th', { attrs: { colspan: 3 } }, [
               h('h2', [h('a', { on: { click: emit('sort country by', 'customer') }, attrs: { href: '#' } }, [
                 'Customer spend ',
                 h('small', `${countrybycustomerspendfiltered.length}/${countrybycustomerspend.rows.length}`)
@@ -144,6 +144,9 @@ export default component({
                   numeral(d.supplier).format('$0,0')
                 ])
                 : null
+              ]),
+              h('td.d', [
+                (state.cube.countrybysuppliercount[d.key] || '').toString()
               ]),
               h('td', [
                 d.supplier != 0
@@ -170,6 +173,9 @@ export default component({
                   numeral(d.customer).format('$0,0')
                 ])
                 : null
+              ]),
+              h('td.d', [
+                (state.cube.countrybycustomercount[d.key] || '').toString()
               ]),
               h('td', [
                 d.customer != 0
