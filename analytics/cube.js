@@ -95,18 +95,6 @@ module.exports = identity => {
       await applydel(api, diff.del)
   }
 
-  const createlink = (source, map) => {
-    if (source.forward.has(api))
-      throw new Error('Cubes are already linked')
-    const dimension = Link(api, map)
-    dimensions.push(dimension)
-    dimension.on('filter changed', p => onfiltered(p))
-    source.forward.set(api, dimension)
-    api.backward.set(source, dimension)
-    dimension.source = source
-    return dimension
-  }
-
   const api = {
     i2d,
     i2id,
@@ -123,6 +111,10 @@ module.exports = identity => {
     backward,
     mark,
     dimensions,
+    internal_dimensions,
+    forward_links,
+    backward_links,
+    onfiltered,
     range_single: map => {
       const dimension = RangeSingle(api, map)
       dimensions.push(dimension)
@@ -171,16 +163,19 @@ module.exports = identity => {
       // dimension.on('trace', p => hub.emit('trace', p))
       return dimension
     },
-    backward_link: (source, map) => {
-      const dimension = createlink(source, map)
-      backward_links.push(dimension)
-      return dimension
-    },
-    forward_link: (source, map) => {
-      const dimension = createlink(source, map)
-      forward_links.push(dimension)
-      source.backward_link(api, i => dimension.lookup(source.identity(i)))
-      return dimension
+    link: (source, map) => {
+      if (source.forward.has(api))
+        throw new Error('Cubes are already linked')
+
+      const f_dim = Link(api, source, map)
+      forward_links.push(f_dim)
+      f_dim.on('filter changed', p => onfiltered(p))
+
+      const b_dim = Link(source, api, i => f_dim.lookup(source.identity(i)))
+      source.backward_links.push(b_dim)
+      b_dim.on('filter changed', p => source.onfiltered(p))
+
+      return f_dim
     },
     batch_calculate_link_change: async ({ indicies, put, del }) => {
       for (const d of backward_links) await d.batch(indicies, put, del)

@@ -1,23 +1,24 @@
 const SparseArray = require('./sparsearray')
 const Hub = require('../lib/hub')
 
-module.exports = (cube, map) => {
+module.exports = (source, target, map) => {
+  const hub = Hub()
+
   const forward = new Map()
   const backward = new Map()
-  let shownulls = true
-  const nulls = new Set()
 
-  const hub = Hub()
-  const bitindex = cube.filterbits.add()
-  const filterindex = new SparseArray()
+  let forward_shownulls = true
+  const forward_nulls = new Set()
+  const forward_bitindex = source.filterbits.add()
+  const forward_filterindex = new SparseArray()
 
-  const api = async ({ put = [], del = [] }) => {
+  const forward_api = async ({ put = [], del = [] }) => {
     const diff = { put: new Set(), del: new Set() }
     for (const key of del) {
       if (!forward.has(key)) continue
       const indicies = forward.get(key)
       for (const index of indicies.keys()) {
-        const current = filterindex.get(index)
+        const current = forward_filterindex.get(index)
         if (current.count === 1) {
           diff.del.add(index)
         }
@@ -28,7 +29,7 @@ module.exports = (cube, map) => {
       if (!forward.has(key)) continue
       const indicies = forward.get(key)
       for (const index of indicies.keys()) {
-        const current = filterindex.get(index)
+        const current = forward_filterindex.get(index)
         if (current.count === 0) {
           diff.del.delete(index)
           diff.put.add(index)
@@ -41,56 +42,57 @@ module.exports = (cube, map) => {
       del: Array.from(diff.del)
     }
   }
-  api.reset = () => {
+  forward_api.reset = () => {
     const result = new Set()
     for (const [key, indicies] of forward.entries()) {
       for (const index of indicies.keys()) {
-        const current = filterindex.get(index)
+        const current = forward_filterindex.get(index)
         result.add(index)
         current.count = current.total
       }
     }
     return Array.from(result)
   }
-  api.lookup = key =>
+  forward_api.lookup = key =>
     !forward.has(key) ? []
     : Array.from(
       forward.get(key).keys(),
-      i => cube.index.get(i))
-  api.shownulls = async () => {
-    if (shownulls) return
-    shownulls = true
+      i => source.index.get(i))
+  forward_api.shownulls = async () => {
+    if (forward_shownulls) return
+    forward_shownulls = true
     await hub.emit('filter changed', {
-      bitindex,
+      bitindex: forward_bitindex,
       del: [],
-      put: Array.from(nulls.values())
+      put: Array.from(forward_nulls.values())
     })
   }
-  api.hidenulls = async () => {
-    if (!shownulls) return
-    shownulls = false
+  forward_api.hidenulls = async () => {
+    if (!forward_shownulls) return
+    forward_shownulls = false
     await hub.emit('filter changed', {
-      bitindex,
-      del: Array.from(nulls.values()),
+      bitindex: forward_bitindex,
+      del: Array.from(forward_nulls.values()),
       put: []
     })
   }
-  api.bitindex = bitindex
-  api.filterindex = filterindex
-  api.map = map
-  api.forward = forward
-  api.backward = backward
-  api.on = hub.on
-  api.cube = cube
-  api.batch = (dataindicies, put, del) => {
-    filterindex.length(Math.max(...dataindicies.put) + 1)
+  forward_api.bitindex = forward_bitindex
+  forward_api.filterindex = forward_filterindex
+  forward_api.map = map
+  forward_api.forward = forward
+  forward_api.backward = backward
+  forward_api.on = hub.on
+  forward_api.cube = source
+  forward_api.source = target
+  forward_api.batch = (dataindicies, put, del) => {
+    forward_filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
     del.forEach((d, i) => {
       const keys = map(d) || []
       const index = dataindicies.del[i]
       if (keys.length == 0) {
-        nulls.delete(index)
-        if (shownulls) diff.del.push(index)
+        forward_nulls.delete(index)
+        if (forward_shownulls) diff.del.push(index)
         return
       }
       let count = 0
@@ -99,7 +101,7 @@ module.exports = (cube, map) => {
         indicies.delete(index)
       }
       if (count > 0) diff.del.push(index)
-      filterindex.set(index, null)
+      forward_filterindex.set(index, null)
     })
     put.forEach((d, i) => {
       const keys = map(d) || []
@@ -108,8 +110,8 @@ module.exports = (cube, map) => {
         backward.set(index, new Set())
       const backwardnode = backward.get(index)
       if (keys.length == 0) {
-        nulls.add(index)
-        if (shownulls) diff.put.push(index)
+        forward_nulls.add(index)
+        if (forward_shownulls) diff.put.push(index)
         return
       }
       let count = 0
@@ -120,17 +122,22 @@ module.exports = (cube, map) => {
         indicies.add(index)
         count++
       }
-      filterindex.set(index, {
+      forward_filterindex.set(index, {
         count: 0,
         total: count
       })
     })
     for (const i of diff.del)
-      cube.filterbits[bitindex.offset][i] |= bitindex.one
+      source.filterbits[forward_bitindex.offset][i] |= forward_bitindex.one
     for (const i of diff.put)
-      cube.filterbits[bitindex.offset][i] &= ~bitindex.one
+      source.filterbits[forward_bitindex.offset][i] &= ~forward_bitindex.one
     hub.emit('batch', { put, del, diff })
     return diff
   }
-  return api
+
+  target.forward.set(source, forward_api)
+  source.backward.set(target, forward_api)
+  source.dimensions.push(forward_api)
+
+  return forward_api
 }

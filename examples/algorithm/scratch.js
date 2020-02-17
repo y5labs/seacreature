@@ -35,15 +35,13 @@ const state = {
 }
 
 state.supplier_byid = state.suppliers.range_single(s => s.Id)
-// state.supplier_byproduct = state.suppliers.backward_link(state.products, s => state.product_bysupplier.lookup(s.Id))
 
 state.product_byid = state.products.range_single(p => p.Id)
-state.product_bysupplier = state.products.forward_link(state.suppliers, p => [p.SupplierId])
-// state.product_byorder = state.products.backward_link(state.orders, p => state.order_byproduct.lookup(p.Id))
+state.product_bysupplier = state.products.link(state.suppliers, p => [p.SupplierId])
 
 state.order_byid = state.orders.range_single(o => o.Id)
-state.order_byproduct = state.orders.forward_link(state.products, o => o.ProductIds)
-state.order_bycustomer = state.orders.forward_link(state.customers, o => [o.CustomerId])
+state.order_byproduct = state.orders.link(state.products, o => o.ProductIds)
+state.order_bycustomer = state.orders.link(state.customers, o => [o.CustomerId])
 
 state.customer_byid = state.customers.range_single(c => c.Id)
 // state.customer_byorder = state.customers.backward_link(state.orders, c => state.order_bycustomer.lookup(c.Id))
