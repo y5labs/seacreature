@@ -8,6 +8,18 @@ inject('pod', ({ hub, state }) => {
     state.filters.countrysort = index
     await hub.emit('update')
   })
+  hub.on('filter supplier and customer by country', async ({ SupplierCountry, CustomerCountry }) => {
+    await state.cube.supplier_country.hidenulls()
+    await state.cube.supplier_country.selectnone()
+    await state.cube.supplier_country({ put: [SupplierCountry] })
+    state.filters.supplierbycountry = SupplierCountry
+    await state.cube.customer_country.hidenulls()
+    await state.cube.customer_country.selectnone()
+    await state.cube.customer_country({ put: [CustomerCountry] })
+    state.filters.customerbycountry = CustomerCountry
+    await hub.emit('calculate projections')
+    await hub.emit('update')
+  })
   hub.on('filter supplier by country', async country => {
     if (country) {
       await state.cube.supplier_country.hidenulls()
@@ -47,6 +59,14 @@ inject('pod', ({ hub, state }) => {
       await state.cube.supplier_byid(id)
       delete state.filters.supplierbyid
     }
+    await hub.emit('calculate projections')
+    await hub.emit('update')
+  })
+  hub.on('filter customer and product by id', async ({ CustomerId, ProductId }) => {
+    await state.cube.customer_byid(CustomerId)
+    state.filters.customerbyid = CustomerId
+    await state.cube.product_byid(ProductId)
+    state.filters.productbyid = ProductId
     await hub.emit('calculate projections')
     await hub.emit('update')
   })

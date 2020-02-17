@@ -12,7 +12,7 @@ body
   margin 0
   padding 0
   background-color white
-  font-family monospace
+  font-family Lato, Helvetica, sans-serif
 
 #root
   background-color white
@@ -25,6 +25,9 @@ body
   grid-template-rows 3.75rem auto
   padding-bottom 5rem
 
+.box a
+  text-decoration none
+
 .cols
   display flex
 .cols + .cols
@@ -33,8 +36,6 @@ body
 .box
   overflow auto
   padding 0.5rem
-  h2
-    margin 0
 
 .bar
   display inline-block
@@ -55,11 +56,29 @@ ul
   list-style-type none
   padding 0
 
+tr.rotate.large
+  th
+    height 200px
+
+  th > div
+    transform translate(20px, 150px) rotate(315deg)
+    width 0
+
+tr.rotate.small
+  th
+    height 80px
+
+  th > div
+    transform translate(20px, 50px) rotate(315deg)
+    width 0
+
 table
   margin 1rem 0
   th
+    white-space nowrap
     text-align left
     font-weight normal
+  thead th
     vertical-align top
     padding 0.5rem 3rem 0.5rem 0
     h2
@@ -68,3 +87,5 @@ table
     padding-right 1rem
     &.d
       text-align right
+      font-family monospace
+      font-size 16px

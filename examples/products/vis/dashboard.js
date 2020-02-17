@@ -89,74 +89,96 @@ export default component({
     productbyunits.rows = productbyunits.rows.filter(s => s.value != 0)
 
     return h('div', [
-      h('table', [
-        h('tr', [
-          h('th', []),
-          h('th', { attrs: { colspan: 2 } }, [
-            h('h2', [h('a', { on: { click: emit('sort country by', 'supplier') }, attrs: { href: '#' } }, [
-              'Supplier spend ',
-              h('small', `${zipped.supplier.count}/${zipped.supplier.total}`)
-            ])]),
-            state.filters.supplierbycountry
-              ? h('a', { on: { click: emit('filter supplier by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.supplierbycountry}`)
-              : []
-          ]),
-          h('th', { attrs: { colspan: 2 } }, [
-            h('h2', [h('a', { on: { click: emit('sort country by', 'position') }, attrs: { href: '#' } }, 'Spend position ')])
-          ]),
-          h('th', { attrs: { colspan: 2 } }, [
-            h('h2', [h('a', { on: { click: emit('sort country by', 'customer') }, attrs: { href: '#' } }, [
-              'Customer spend ',
-              h('small', `${countrybycustomerspendfiltered.length}/${countrybycustomerspend.rows.length}`)
-            ])]),
-            state.filters.customerbycountry
-              ? h('a', { on: { click: emit('filter customer by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.customerbycountry}`)
-              : []
-          ])
-        ]),
-        ...zipped.rows.map(d =>
+      h('div.box', [
+        state.filters.supplierbycountry
+          ? h('div', [ h('a', { on: { click: emit('filter supplier by country', null) }, attrs: { href: '#' } }, `Clear suppliers from ${state.filters.supplierbycountry}`)])
+          : [],
+        state.filters.supplierbyid
+          ? h('div', [ h('a', { on: { click: emit('filter supplier by id', null) }, attrs: { href: '#' } }, `Clear supplier ${state.cube.supplier_desc(state.filters.supplierbyid)}`)])
+          : [],
+        state.filters.customerbycountry
+          ? h('div', [ h('a', { on: { click: emit('filter customer by country', null) }, attrs: { href: '#' } }, `Clear customers from ${state.filters.customerbycountry}`)])
+          : [],
+        state.filters.customerbyid
+          ? h('div', [ h('a', { on: { click: emit('filter customer by id', null) }, attrs: { href: '#' } }, `Clear customer ${state.cube.customer_desc(state.filters.customerbyid)}`)])
+          : [],
+        state.filters.productbyid
+          ? h('div', [ h('a', { on: { click: emit('filter product by id', null) }, attrs: { href: '#' } }, `Clear product ${state.cube.product_desc(state.filters.productbyid)}`)])
+          : [],
+        state.filters.orderitembyid
+          ? h('div', [ h('a', { on: { click: emit('filter orderitem by id', null) }, attrs: { href: '#' } }, `Clear orderitem ${state.cube.orderitem_desc(state.filters.orderitembyid)}`)])
+          : []
+      ]),
+      h('div.box', [
+        h('table', [
           h('tr', [
-            h('td', d.key),
-            h('td.d', [
-              d.supplier != 0
-              ? h('a', { on: { click: emit('filter supplier by country', d.key) }, attrs: { href: '#' } }, [
-                numeral(d.supplier).format('$0,0')
-              ])
-              : null
+            h('th', []),
+            h('th', { attrs: { colspan: 2 } }, [
+              h('h2', [h('a', { on: { click: emit('sort country by', 'supplier') }, attrs: { href: '#' } }, [
+                'Supplier spend ',
+                h('small', `${zipped.supplier.count}/${zipped.supplier.total}`)
+              ])]),
+              state.filters.supplierbycountry
+                ? h('a', { on: { click: emit('filter supplier by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.supplierbycountry}`)
+                : []
             ]),
-            h('td', [
-              d.supplier != 0
-              ? h('span.bar', { style: { width: `${100 * d.supplier / zipped.supplier.max}px` } })
-              : null
+            h('th', { attrs: { colspan: 2 } }, [
+              h('h2', [h('a', { on: { click: emit('sort country by', 'position') }, attrs: { href: '#' } }, 'Spend position ')])
             ]),
-            h('td.d', [
-              numeral(d.position).format('$0,0')
-            ]),
-            h('td', [
-              d.position < 0
-              ? [
-                h('span.bar.blank', { style: { width: `${100 * (spendpositionmin + d.position) / spendpositionabs}px` } }),
-                h('span.bar.red', { style: { width: `${100 * -d.position / spendpositionabs}px` } })
-              ]
-              : h('span.bar.blank', { style: { width: `${100 * spendpositionmin / spendpositionabs}px` } }),
-              d.position > 0
-              ? h('span.bar.green', { style: { width: `${100 * d.position / spendpositionabs}px` } })
-              : null
-            ]),
-            h('td.d', [
-              d.customer != 0
-              ? h('a', { on: { click: emit('filter customer by country', d.key) }, attrs: { href: '#' } }, [
-                numeral(d.customer).format('$0,0')
-              ])
-              : null
-            ]),
-            h('td', [
-              d.customer != 0
-              ? h('span.bar', { style: { width: `${100 * d.customer / zipped.customer.max}px` } })
-              : null
+            h('th', { attrs: { colspan: 2 } }, [
+              h('h2', [h('a', { on: { click: emit('sort country by', 'customer') }, attrs: { href: '#' } }, [
+                'Customer spend ',
+                h('small', `${countrybycustomerspendfiltered.length}/${countrybycustomerspend.rows.length}`)
+              ])]),
+              state.filters.customerbycountry
+                ? h('a', { on: { click: emit('filter customer by country', null) }, attrs: { href: '#' } }, `Clear ${state.filters.customerbycountry}`)
+                : []
             ])
-          ]))
-        ]),
+          ]),
+          ...zipped.rows.map(d =>
+            h('tr', [
+              h('td', d.key),
+              h('td.d', [
+                d.supplier != 0
+                ? h('a', { on: { click: emit('filter supplier by country', d.key) }, attrs: { href: '#' } }, [
+                  numeral(d.supplier).format('$0,0')
+                ])
+                : null
+              ]),
+              h('td', [
+                d.supplier != 0
+                ? h('span.bar', { style: { width: `${100 * d.supplier / zipped.supplier.max}px` } })
+                : null
+              ]),
+              h('td.d', [
+                numeral(d.position).format('$0,0')
+              ]),
+              h('td', [
+                d.position < 0
+                ? [
+                  h('span.bar.blank', { style: { width: `${100 * (spendpositionmin + d.position) / spendpositionabs}px` } }),
+                  h('span.bar.red', { style: { width: `${100 * -d.position / spendpositionabs}px` } })
+                ]
+                : h('span.bar.blank', { style: { width: `${100 * spendpositionmin / spendpositionabs}px` } }),
+                d.position > 0
+                ? h('span.bar.green', { style: { width: `${100 * d.position / spendpositionabs}px` } })
+                : null
+              ]),
+              h('td.d', [
+                d.customer != 0
+                ? h('a', { on: { click: emit('filter customer by country', d.key) }, attrs: { href: '#' } }, [
+                  numeral(d.customer).format('$0,0')
+                ])
+                : null
+              ]),
+              h('td', [
+                d.customer != 0
+                ? h('span.bar', { style: { width: `${100 * d.customer / zipped.customer.max}px` } })
+                : null
+              ])
+            ]))
+          ])
+      ]),
       h('div.cols', [
         h('div.box', [
           h('h2', [
@@ -216,34 +238,46 @@ export default component({
         ])
       ]),
       h('div.box', [
-        h('h2', 'Products by customers'),
+        h('h2', 'Customers (rows) by product (columns)'),
+        state.filters.customerbyid
+          ? h('div', [h('a', { on: { click: emit('filter customer by id', null) }, attrs: { href: '#' } }, `Clear ${state.cube.customer_desc(state.filters.customerbyid)}`)])
+          : [],
+        state.filters.productbyid
+          ? h('div', [h('a', { on: { click: emit('filter product by id', null) }, attrs: { href: '#' } }, `Clear ${state.cube.product_desc(state.filters.productbyid)}`)])
+          : [],
         h('table', [
-          h('thead', [h('tr', [
+          h('thead', [h('tr.rotate.large', [
             h('th', ''),
             ...productbyunits.rows.map(p =>
-              h('th', state.cube.product_desc(p.key)))
+              h('th', [ h('div', [h('a', { on: { click: emit('filter product by id', p.key) }, attrs: { href: '#' } }, [ state.cube.product_desc(p.key) ])])]))
           ])]),
           h('tbody', customerbyspend.rows.map(c =>
             h('tr', [
-              h('td', state.cube.customer_desc(c.key)),
+              h('th', [h('a', { on: { click: emit('filter customer by id', c.key) }, attrs: { href: '#' } }, [ state.cube.customer_desc(c.key) ])]),
               ...productbyunits.rows.map(p =>
-                h('td', (pathie.get(state.cube.productsbycustomer, [c.key, p.key]) || 0).toString()))
+                h('td.d', [ h('a', { on: { click: emit('filter customer and product by id', { CustomerId: c.key, ProductId: p.key }) }, attrs: { href: '#' } }, [(pathie.get(state.cube.productsbycustomer, [c.key, p.key]) || 0).toString()])]))
             ])))
         ])
       ]),
       h('div.box', [
-        h('h2', 'Supplier country (x) by customer country (y)'),
+        h('h2', 'Customer country (rows) by supplier country (columns)'),
+        state.filters.customerbycountry
+          ? h('div', [ h('a', { on: { click: emit('filter customer by country', null) }, attrs: { href: '#' } }, `Clear customers from ${state.filters.customerbycountry}`)])
+          : [],
+        state.filters.supplierbycountry
+          ? h('div', [ h('a', { on: { click: emit('filter supplier by country', null) }, attrs: { href: '#' } }, `Clear suppliers from ${state.filters.supplierbycountry}`)])
+          : [],
         h('table', [
-          h('thead', [h('tr', [
+          h('thead', [h('tr.rotate.small', [
             h('th', ''),
             ...countrybysupplierspendfiltered.map(sc =>
-              h('th', sc.key))
+              h('th', [ h('div', [h('a', { on: { click: emit('filter supplier by country', sc.key) }, attrs: { href: '#' } }, [ sc.key ])])]))
           ])]),
           h('tbody', countrybycustomerspendfiltered.map(cc =>
             h('tr', [
-              h('td', cc.key),
+              h('td', [ h('a', { on: { click: emit('filter customer by country', cc.key) }, attrs: { href: '#' } }, [ cc.key ])]),
               ...countrybysupplierspendfiltered.map(sc =>
-                h('td', (pathie.get(state.cube.countrymovements, [sc.key, cc.key]) || 0).toString()))
+                h('td.d', [ h('a', { on: { click: emit('filter supplier and customer by country', { SupplierCountry: sc.key, CustomerCountry: cc.key }) }, attrs: { href: '#' } }, [(pathie.get(state.cube.countrymovements, [sc.key, cc.key]) || 0).toString()])]))
             ])))
         ])
       ])
