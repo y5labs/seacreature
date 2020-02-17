@@ -179,6 +179,7 @@ module.exports = identity => {
     forward_link: (source, map) => {
       const dimension = createlink(source, map)
       forward_links.push(dimension)
+      source.backward_link(api, i => dimension.lookup(source.identity(i)))
       return dimension
     },
     batch_calculate_link_change: async ({ indicies, put, del }) => {

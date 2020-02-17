@@ -164,5 +164,13 @@ inject('pod', ({ hub, state }) => {
         })
       })
     hub.on('calculate projections', () => suppliersintocustomers())
+
+    // hub.on('calculate projections', () => {
+    //   console.log('suppliers', Array.from(state.cube.suppliers.filtered()))
+    //   console.log('products', Array.from(state.cube.products.filtered()))
+    //   console.log('orders', Array.from(state.cube.orders.filtered()))
+    //   console.log('orderitems', Array.from(state.cube.orderitems.filtered()))
+    //   console.log('customers', Array.from(state.cube.customers.filtered()))
+    // })
   })
 })
