@@ -97,8 +97,8 @@ module.exports = identity => {
     else if (diff.del.length > 0)
       await applydel(api, diff.del)
 
+    // auto nulls
     const nowselected = api.selected == api.total
-
     if (startedselected && !nowselected)
       for (const [target, dimension] of api.forward.entries())
         await dimension.hidenulls()

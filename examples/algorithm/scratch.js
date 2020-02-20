@@ -58,8 +58,8 @@ const put = async (state, data) => {
 await put(state, data)
 
 let count = 0
-const run = async fn => {
-  const pf = () => perf((count++).toString())
+const pf = () => perf((count++).toString())
+const scenario1 = async fn => {
   fn(pf())
   console.log('Order - 3')
   await state.order_byid(3)
@@ -82,6 +82,21 @@ const run = async fn => {
   await state.orders.batch_calculate_selection_change(diff.selection_change)
   fn(pf(), 'New order')
 }
+const scenario2 = async fn => {
+  fn(pf())
+  console.log('Product - Drink')
+  await state.product_byid('Drink')
+  fn(pf(), 'Product - Drink')
+  console.log('Order - 3')
+  await state.order_byid(3)
+  fn(pf(), 'Order - 3')
+  console.log('Product - null')
+  await state.product_byid(null)
+  fn(pf(), 'Product - null')
+  console.log('Order - null')
+  await state.order_byid(null)
+  fn(pf(), 'Order - null')
+}
 
 perf()
 
@@ -97,25 +112,46 @@ const link_dest_paddings = [8, 12, 12]
 // const link_dest_paddings = [6, 8, 8, 12, 12, 7]
 
 const cube_table = []
-cube_table.push('╭' + Array(68).fill('─').join('') + '╮')
-cube_table.push('│ ' + cubes.map((id, index) => cube_desc[index].padEnd(cube_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
-cube_table.push('├' + Array(68).fill('─').join('') + '┤')
-
 const link_dest_table = []
-link_dest_table.push('╭' + Array(67).fill('─').join('') + '╮')
-link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join('') + '│'.padStart(35, ' '))
-link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
-link_dest_table.push('├' + Array(67).fill('─').join('') + '┤')
 
-await run((e, msg) => {
+const header = () => {
+  cube_table.push('╭' + Array(68).fill('─').join('') + '╮')
+  cube_table.push('│ ' + cubes.map((id, index) => cube_desc[index].padEnd(cube_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
+  cube_table.push('├' + Array(68).fill('─').join('') + '┤')
+
+  link_dest_table.push('╭' + Array(67).fill('─').join('') + '╮')
+  link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join('') + '│'.padStart(35, ' '))
+  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
+  link_dest_table.push('├' + Array(67).fill('─').join('') + '┤')
+}
+
+const body = (e, msg) => {
   cube_table.push('│ ' + cubes.map((id, index) => Array.from(state[id].filtered(Infinity)).map(d =>state[id].identity(d).toString()[0]).join(' ').padEnd(cube_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
   link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
-})
+}
+
+const footer = () => {
+  cube_table.push('╰' + Array(68).fill('─').join('') + '╯')
+  link_dest_table.push('╰' + Array(67).fill('─').join('') + '╯')
+}
 
 
-cube_table.push('╰' + Array(68).fill('─').join('') + '╯')
-link_dest_table.push('╰' + Array(67).fill('─').join('') + '╯')
+header()
+await scenario1(body)
+footer()
+console.log('CUBES')
+console.log(cube_table.join('\n'))
+console.log('FILTERINDEX')
+console.log(link_dest_table.join('\n'))
+console.log()
 
+cube_table.length = 0
+link_dest_table.length = 0
+
+
+header()
+await scenario2(body)
+footer()
 console.log('CUBES')
 console.log(cube_table.join('\n'))
 console.log('FILTERINDEX')
