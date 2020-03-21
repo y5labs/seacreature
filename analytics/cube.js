@@ -189,6 +189,9 @@ module.exports = identity => {
       source.backward_links.push(b_dim)
       b_dim.on('filter changed', p => source.onfiltered(p))
 
+      f_dim.inverse = b_dim
+      b_dim.inverse = f_dim
+
       return f_dim
     },
     batch_calculate_link_change: async ({ indicies, put, del }) => {
