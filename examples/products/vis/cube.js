@@ -53,22 +53,19 @@ inject('pod', ({ hub, state }) => {
     c.supplier_country = c.suppliers.set_single(s => s.Country)
     c.supplier_byphone = c.suppliers.range_single(s => s.Phone)
     c.supplier_byfax = c.suppliers.range_single(s => s.Fax)
-    c.supplier_byproduct = c.suppliers.backward_link(c.products, s => c.product_bysupplier.lookup(s.Id))
 
     c.product_byid = c.products.range_single(p => p.Id)
     c.product_byproductname = c.products.range_single(p => p.ProductName)
-    c.product_bysupplier = c.products.forward_link(c.suppliers, p => [p.SupplierId])
+    c.product_bysupplier = c.products.link(c.suppliers, p => [p.SupplierId])
     c.product_byunitprice = c.products.range_single(p => p.UnitPrice)
     c.product_bypackage = c.products.range_multiple_text(p => p.Package, stemmer)
     c.product_byisdiscontinued = c.products.range_single(p => p.IsDiscontinued)
-    c.product_byorderitem = c.products.backward_link(c.orderitems, p => c.orderitem_byproduct.lookup(p.Id))
 
     c.order_byid = c.orders.range_single(o => o.Id)
     c.order_bytime = c.orders.range_single(o => o.ts)
-    c.order_bycustomer = c.orders.forward_link(c.customers, o => [o.CustomerId])
+    c.order_bycustomer = c.orders.link(c.customers, o => [o.CustomerId])
     c.order_bytotalamount = c.orders.range_single(o => o.TotalAmount)
     c.order_byordernumber = c.orders.range_single(o => o.OrderNumber)
-    c.order_byorderitem = c.orders.backward_link(c.orderitems, o => c.orderitem_byorder.lookup(o.Id))
 
     c.customer_byid = c.customers.range_single(u => u.Id)
     c.customer_byfirstname = c.customers.range_single(u => u.FirstName)
@@ -76,14 +73,18 @@ inject('pod', ({ hub, state }) => {
     c.customer_city = c.customers.set_single(u => u.City)
     c.customer_country = c.customers.set_single(u => u.Country)
     c.customer_byphone = c.customers.range_single(u => u.Phone)
-    c.customer_byorder = c.customers.backward_link(c.orders, u => c.order_bycustomer.lookup(u.Id))
 
     c.orderitem_byid = c.orderitems.range_single(i => i.Id)
-    c.orderitem_byorder = c.orderitems.forward_link(c.orders, i => [i.OrderId])
-    c.orderitem_byproduct = c.orderitems.forward_link(c.products, i => [i.ProductId])
+    c.orderitem_byorder = c.orderitems.link(c.orders, i => [i.OrderId])
+    c.orderitem_byproduct = c.orderitems.link(c.products, i => [i.ProductId])
     c.orderitem_byunitprice = c.orderitems.range_single(i => i.UnitPrice)
     c.orderitem_byquantity = c.orderitems.range_single(i => i.Quantity)
     c.orderitem_byprice = c.orderitems.range_single(i => i.UnitPrice * i.Quantity)
+
+    c.supplier_byproduct = c.product_bysupplier.inverse
+    c.product_byorderitem = c.orderitem_byproduct.inverse
+    c.order_byorderitem = c.orderitem_byorder.inverse
+    c.customer_byorder = c.order_bycustomer.inverse
 
     // helpers
     c.product_desc = id => c.products.id2d(id).ProductName

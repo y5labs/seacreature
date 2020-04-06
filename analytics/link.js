@@ -9,10 +9,11 @@ module.exports = (source, target, map) => {
 
   let forward_shownulls = true
   const forward_nulls = new Set()
-  const forward_bitindex = source.filterbits.add()
+  const forward_bitindex = target.filterbits.add()
   const forward_filterindex = new SparseArray()
 
   const forward_api = async ({ put = [], del = [] }) => {
+    // console.log(source.print(), target.print(), put, del)
     const diff = { put: new Set(), del: new Set() }
     for (const key of del) {
       if (!forward.has(key)) continue
@@ -57,7 +58,7 @@ module.exports = (source, target, map) => {
     !forward.has(key) ? []
     : Array.from(
       forward.get(key).keys(),
-      i => source.index.get(i))
+      i => target.index.get(i))
   forward_api.shownulls = async () => {
     if (forward_shownulls) return
     forward_shownulls = true
@@ -82,8 +83,8 @@ module.exports = (source, target, map) => {
   forward_api.forward = forward
   forward_api.backward = backward
   forward_api.on = hub.on
-  forward_api.cube = source
-  forward_api.source = target
+  forward_api.cube = target
+  forward_api.source = source
   forward_api.batch = (dataindicies, put, del) => {
     forward_filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
@@ -128,16 +129,16 @@ module.exports = (source, target, map) => {
       })
     })
     for (const i of diff.del)
-      source.filterbits[forward_bitindex.offset][i] |= forward_bitindex.one
+      target.filterbits[forward_bitindex.offset][i] |= forward_bitindex.one
     for (const i of diff.put)
-      source.filterbits[forward_bitindex.offset][i] &= ~forward_bitindex.one
+      target.filterbits[forward_bitindex.offset][i] &= ~forward_bitindex.one
     hub.emit('batch', { put, del, diff })
     return diff
   }
 
-  target.forward.set(source, forward_api)
-  source.backward.set(target, forward_api)
-  source.dimensions.push(forward_api)
+  source.forward.set(target, forward_api)
+  target.backward.set(source, forward_api)
+  target.dimensions.push(forward_api)
 
   return forward_api
 }
