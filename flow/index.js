@@ -26,20 +26,21 @@ flow.compose = flow
 
 // helpers to calculate ttl
 flow.now = () => new Date().valueOf()
-flow.milliseconds = flow.ms = (n) => n
-flow.seconds = flow.s = (n) => 1000 * flow.ms(n)
-flow.minutes = flow.m = (n) => 60 * flow.s(n)
-flow.hours = flow.h = (n) => 60 * flow.m(n)
-flow.days = flow.d = (n) => 24 * flow.h(n)
+flow.milliseconds = flow.ms = n => n
+flow.seconds = flow.s = n => 1000 * flow.ms(n)
+flow.minutes = flow.m = n => 60 * flow.s(n)
+flow.hours = flow.h = n => 60 * flow.m(n)
+flow.days = flow.d = n => 24 * flow.h(n)
+flow.weeks = flow.w = n => 7 * flow.d(n)
 
 // helper for building new functions
-flow.unit = (params) => {
+flow.unit = params => {
   let kids = []
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => params.emit(e, (e) => {
+  res.emit = e => params.emit(e, e => {
     for (let k of kids) k.emit(e)
   })
   if (params.copy == null) {
@@ -62,10 +63,10 @@ flow.unit = (params) => {
 flow.stream = () => flow.unit({ emit: (e, next) => next(e) })
 
 // test events and only let certain ones through
-flow.filter = (test) => flow.unit({ emit: (e, next) => { if (test(e)) next(e) }})
+flow.filter = test => flow.unit({ emit: (e, next) => { if (test(e)) next(e) }})
 
 // test events and only let ones through that match provided tag
-flow.tagged = (tag) => flow.unit({ emit: (e, next) => {
+flow.tagged = tag => flow.unit({ emit: (e, next) => {
   if (e.tags == null) return
   for (let t of e.tags) {
     if (t !== tag) continue
@@ -74,7 +75,7 @@ flow.tagged = (tag) => flow.unit({ emit: (e, next) => {
 }})
 
 // test events and only let ones through that match any of the provided tags
-flow.taggedany = (tags) => {
+flow.taggedany = tags => {
   const tagmap = {}
   for (let t of e.tags) tagmap[t] = true
   return flow.unit({
@@ -89,7 +90,7 @@ flow.taggedany = (tags) => {
 }
 
 // test events and only let ones through that match all of the provided tags
-flow.taggedall = (tags) => {
+flow.taggedall = tags => {
   const tagmap = {}
   for (let t of e.tags) tagmap[t] = true
   return flow.unit({
@@ -103,7 +104,7 @@ flow.taggedall = (tags) => {
 }
 
 // run a function for each event
-flow.each = (fn) => flow.unit({ emit: (e, next) => {
+flow.each = fn => flow.unit({ emit: (e, next) => {
   fn(e)
   next(e)
 }})
@@ -112,10 +113,10 @@ flow.each = (fn) => flow.unit({ emit: (e, next) => {
 flow.copy = flow.unit({ emit: (e, next) => next(Object.assign({}, e))})
 
 // run a function to change each passed event
-flow.map = (fn) => flow.unit({ emit: (e, next) => next(fn(e)) })
+flow.map = fn => flow.unit({ emit: (e, next) => next(fn(e)) })
 
 // run a function on a set of events reducing to a single event
-flow.reduce = (fn) => flow.unit({ emit: (events, next) => {
+flow.reduce = fn => flow.unit({ emit: (events, next) => {
   let current = null
   for (let item of events) {
     if (item == null) continue
@@ -126,15 +127,15 @@ flow.reduce = (fn) => flow.unit({ emit: (events, next) => {
 }})
 
 // from a set of events find the max based on a selector
-flow.max = (selector) => flow.reduce((current, e) =>
+flow.max = selector => flow.reduce((current, e) =>
   selector(e) > selector(current) ? e : current)
 
 // from a set of events find the min based on a selector
-flow.min = (selector) => flow.reduce((current, e) =>
+flow.min = selector => flow.reduce((current, e) =>
   selector(e) < selector(current) ? e : current)
 
 // from a set of events sum based on a selector, saved as metric
-flow.sum = (selector) => flow.reduce((current, e) => {
+flow.sum = selector => flow.reduce((current, e) => {
   if (e.metric == null) e.metric = 0
   e.metric += selector(e)
   return e
@@ -148,8 +149,8 @@ flow.count = flow.reduce((current, e) => {
 })
 
 // reduce a set of events to a single event with statistics based on selector
-flow.stats = (selector) => flow.unit({ emit: (events, next) => {
-  events = events.filter((e) => e != null)
+flow.stats = selector => flow.unit({ emit: (events, next) => {
+  events = events.filter(e => e != null)
   if (events.length === 0) return
   let value = selector(events[0])
   let sum = 0
@@ -172,7 +173,7 @@ flow.stats = (selector) => flow.unit({ emit: (events, next) => {
 }})
 
 // emit a rolling set of events based on a time window of events
-flow.contexttime = (ms) => {
+flow.contexttime = ms => {
   let context = []
   return flow.unit({
     emit: (e, next) => {
@@ -191,7 +192,7 @@ flow.contexttime = (ms) => {
 }
 
 // emit a rolling set of events based on a window of n events
-flow.contextcount = (count) => {
+flow.contextcount = count => {
   const events = []
   return flow.unit({
     emit: (e, next) => {
@@ -204,7 +205,7 @@ flow.contextcount = (count) => {
 }
 
 // group events by time
-flow.grouptime = (ms) => {
+flow.grouptime = ms => {
   const kids = []
   let handle = null
   let events = []
@@ -217,11 +218,11 @@ flow.grouptime = (ms) => {
       handle = null
     }
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (handle == null) {
       events = [e]
       handle = setTimeout(drain, ms)
@@ -236,7 +237,7 @@ flow.grouptime = (ms) => {
 }
 
 // group events by count
-flow.groupcount = (count) => {
+flow.groupcount = count => {
   let events = []
   return flow.unit({
     emit: (e, next) => {
@@ -263,11 +264,11 @@ flow.batch = (count, ms) => {
       handle = setTimeout(drain, ms)
     } else handle = null
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (handle == null) {
       events = [e]
       handle = setTimeout(drain, ms)
@@ -283,7 +284,7 @@ flow.batch = (count, ms) => {
 }
 
 // sample at most one event over a time period
-flow.sampletime = (ms) => {
+flow.sampletime = ms => {
   let last = null
   return flow.unit({
     emit: (e, next) => {
@@ -299,7 +300,7 @@ flow.sampletime = (ms) => {
 }
 
 // sample an event every n events
-flow.samplecount = (count) => {
+flow.samplecount = count => {
   let index = 0
   return flow.unit({
     emit: (e, next) => {
@@ -327,7 +328,7 @@ flow.changed = (selector, initial) => {
 }
 
 // wait until no events for a time to emit the last event
-flow.settle = (ms) => {
+flow.settle = ms => {
   const kids = []
   let handle = null
   let event = null
@@ -336,11 +337,11 @@ flow.settle = (ms) => {
     event = null
     handle = null
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (handle != null) clearTimeout(handle)
     event = e
     handle = setTimeout(drain, ms)
@@ -358,11 +359,11 @@ flow.stable = (ms, selector, initial) => {
   let previous = initial
   const kids = []
   let event = null
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (!e.time) e.time = flow.now()
     if (event != null && e.time - event.time > ms) event = null
     if (event === null) {
@@ -384,23 +385,23 @@ flow.stable = (ms, selector, initial) => {
 }
 
 // wait ms between events, ignoring others
-flow.debounce = (ms) => {
+flow.debounce = ms => {
   let kids = []
   let handle = null
   let lastevent = null
   let lasttime = null
-  const next = (e) => { for (let k of kids) k.emit(e) }
+  const next = e => { for (let k of kids) k.emit(e) }
   const drain = () => {
     handle = null
     lasttime = flow.now()
     next(lastevent)
     lastevent = null
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     const now = flow.now()
     if (handle) {
       clearTimeout(handle)
@@ -419,14 +420,14 @@ flow.debounce = (ms) => {
 }
 
 // pull multiple streams into one
-flow.combine = (streams) => {
+flow.combine = streams => {
   const kids = []
-  for (let s of streams) s({ emit: (e) => res.emit(e) })
-  const res = (k) => {
+  for (let s of streams) s({ emit: e => res.emit(e) })
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => { for (let k of kids) k.emit(e) }
+  res.emit = e => { for (let k of kids) k.emit(e) }
   res.copy = () => {
     const twin = flow.combine(streams)
     for (let k of kids) twin(k.copy())
@@ -436,16 +437,16 @@ flow.combine = (streams) => {
 }
 
 // split a stream into multiple streams based on a selector
-flow.split = (selector) => {
+flow.split = selector => {
   const kids = []
   const streams = {}
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     const value = selector(e)
-    if (streams[value] == null) streams[value] = kids.map((k) => k.copy())
+    if (streams[value] == null) streams[value] = kids.map(k => k.copy())
     for (let k of streams[value]) k.emit(e)
   }
   res.copy = () => {
@@ -457,7 +458,7 @@ flow.split = (selector) => {
 }
 
 // reverse order of combine
-flow.pipe = (sequence) => {
+flow.pipe = sequence => {
   if (sequence.length === 0) return stream
   let res = sequence[0]
   for (let i = 1; i < sequence.length; i++) res = sequence[i](res)
@@ -465,13 +466,13 @@ flow.pipe = (sequence) => {
 }
 
 // call each function with events
-flow.every = (kids) => {
+flow.every = kids => {
   kids = kids.slice()
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => { for (let k of kids) k.emit(e) }
+  res.emit = e => { for (let k of kids) k.emit(e) }
   res.copy = () => {
     const twin = flow.every([])
     for (let k of kids) twin(k.copy())
@@ -507,11 +508,11 @@ flow.coalesce = (selector, ms) => {
       handle = null
     }
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (e != null && e.state != null && e.state === 'expired') return
     if (!e.time) e.time = flow.now()
     if (!e.ttl) e.ttl = flow.minutes(1)
@@ -528,14 +529,14 @@ flow.coalesce = (selector, ms) => {
 }
 
 // match events against each predicate and emit an array respecting ttl
-flow.project = (predicates) => {
+flow.project = predicates => {
   const kids = []
   let events = predicates.map((predicate) => null)
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (!e.time) e.time = flow.now()
     for (let predicate of predicates) if (predicate(e)) events[index] = e
     for (let k of kids) k.emit(events)
@@ -563,11 +564,11 @@ flow.rollup = (count, ms) => {
     events = []
     handle = null
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (!e.time) e.time = flow.now()
     if (handle != null) returnevents.push(e)
     events.push(e)
@@ -606,11 +607,11 @@ flow.apdex = (issatisfied, istolerated, ms) => {
     events = []
     handle = setTimeout(drain, ms)
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (e != null && e.state != null && e.state === 'expired') return
     events.push(e)
     if (handle == null) handle = setTimeout(drain, ms)
@@ -640,11 +641,11 @@ flow.throttle = (count, ms) => {
     events = []
     handle = null
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (!e.time) e.time = flow.now()
     if (handle != null) return events.push(e)
     events.push(e)
@@ -664,7 +665,7 @@ flow.throttle = (count, ms) => {
 }
 
 // calculate the change in a selector over time, saved as metric
-flow.ddt = (selector) => {
+flow.ddt = selector => {
   let last = null
   return flow.unit({
     emit: (e, next) => {
@@ -741,7 +742,7 @@ flow.rate = (selector, ms) => flow.unit({
 flow.percentiles = (selector, points) => flow.unit({
   emit: (events, next) => {
     if (events.length == 0) return
-    const values = events.map((e) => { return {
+    const values = events.map(e => { return {
       value: selector(e),
       event: e
     }})
@@ -774,11 +775,11 @@ flow.fillin = (ms, generate) => {
     for (let k of kids) k.emit(e)
     handle = setTimeout(drain, ms)
   }
-  const res = (k) => {
+  const res = k => {
     kids.push(k)
     return res
   }
-  res.emit = (e) => {
+  res.emit = e => {
     if (!e.time) e.time = flow.now()
     if (!e.ttl) e.ttl = flow.minutes(1)
     if (handle != null) {
