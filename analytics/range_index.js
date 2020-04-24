@@ -24,7 +24,7 @@ const bisect_right = (a, x, lo, hi) => {
 }
 
 const update_left = (range, filter, indicies, lo) => {
-  if (lo === null) return 0
+  if (lo === null || range.length == 0) return 0
 
   // no pivots
   if (filter[0] === null && filter[1] === null)
@@ -46,7 +46,7 @@ const update_left = (range, filter, indicies, lo) => {
 }
 
 const update_right = (range, filter, indicies, hi) => {
-  if (hi === null) return range.length - 1
+  if (hi === null || range.length == 0) return range.length - 1
 
   // no pivots
   if (filter[0] === null && filter[1] === null)
