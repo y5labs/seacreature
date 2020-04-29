@@ -47,8 +47,6 @@ module.exports = identity => {
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
 
-    const startedselected = api.selected == api.total
-
     const diff = { put: [], del: [] }
     let shouldrecalc = false
 
@@ -65,7 +63,6 @@ module.exports = identity => {
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
-    api.selected += put.length - del.length
     await hub.emit('filter changed', { bitindex, put, del })
     await hub.emit('selection changed', {
       put: diff.put.map(i2d),
@@ -96,15 +93,18 @@ module.exports = identity => {
     }
     else if (diff.del.length > 0)
       await applydel(api, diff.del)
+  }
 
-    // auto nulls
-    const nowselected = api.selected == api.total
-    if (startedselected && !nowselected)
-      for (const [target, dimension] of api.forward.entries())
-        await dimension.hidenulls()
-    else if (!startedselected && nowselected)
-      for (const [target, dimension] of api.forward.entries())
-        await dimension.shownulls()
+  const createlink = (source, map) => {
+    if (source.forward.has(api))
+      throw new Error('Cubes are already linked')
+    const dimension = Link(api, map)
+    dimensions.push(dimension)
+    dimension.on('filter changed', p => onfiltered(p))
+    source.forward.set(api, dimension)
+    api.backward.set(source, dimension)
+    dimension.source = source
+    return dimension
   }
 
   const api = {
@@ -123,12 +123,6 @@ module.exports = identity => {
     backward,
     mark,
     dimensions,
-    internal_dimensions,
-    forward_links,
-    backward_links,
-    onfiltered,
-    selected: 0,
-    total: 0,
     range_single: map => {
       const dimension = RangeSingle(api, map)
       dimensions.push(dimension)
@@ -177,22 +171,15 @@ module.exports = identity => {
       // dimension.on('trace', p => hub.emit('trace', p))
       return dimension
     },
-    link: (source, map) => {
-      if (source.forward.has(api))
-        throw new Error('Cubes are already linked')
-
-      const f_dim = Link(source, api, map)
-      forward_links.push(f_dim)
-      f_dim.on('filter changed', p => api.onfiltered(p))
-
-      const b_dim = Link(api, source, i => f_dim.lookup(source.identity(i)))
-      source.backward_links.push(b_dim)
-      b_dim.on('filter changed', p => source.onfiltered(p))
-
-      f_dim.inverse = b_dim
-      b_dim.inverse = f_dim
-
-      return f_dim
+    backward_link: (source, map) => {
+      const dimension = createlink(source, map)
+      backward_links.push(dimension)
+      return dimension
+    },
+    forward_link: (source, map) => {
+      const dimension = createlink(source, map)
+      forward_links.push(dimension)
+      return dimension
     },
     batch_calculate_link_change: async ({ indicies, put, del }) => {
       for (const d of backward_links) await d.batch(indicies, put, del)
@@ -211,7 +198,6 @@ module.exports = identity => {
           linkchanges.put.push(i2id(i))
         }
       }
-      api.selected += changes.put.length - changes.del.length
       await hub.emit('selection changed', changes)
       for (const [cube, link] of forward.entries()) {
         const diff = await link(linkchanges)
@@ -252,7 +238,6 @@ module.exports = identity => {
       for (const i of indicies.put) filterbits.clear(i)
       for (const d of internal_dimensions) d.batch(indicies, put, del)
       for (const d of forward_links) d.batch(indicies, put, del)
-      api.total += put.length - del.length
       await hub.emit('batch', { indicies, put, del })
       return result
     }
