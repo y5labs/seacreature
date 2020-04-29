@@ -35,15 +35,21 @@ const state = {
 }
 
 state.supplier_byid = state.suppliers.range_single(s => s.Id)
+// state.supplier_byproduct = state.suppliers.backward_link(state.products, s => state.product_bysupplier.lookup(s.Id))
 
 state.product_byid = state.products.range_single(p => p.Id)
+// state.product_bysupplier = state.products.forward_link(state.suppliers, p => [p.SupplierId])
 state.product_bysupplier = state.products.link(state.suppliers, p => [p.SupplierId])
+// state.product_byorder = state.products.backward_link(state.orders, p => state.order_byproduct.lookup(p.Id))
 
 state.order_byid = state.orders.range_single(o => o.Id)
+// state.order_byproduct = state.orders.forward_link(state.products, o => o.ProductIds)
 state.order_byproduct = state.orders.link(state.products, o => o.ProductIds)
+// state.order_bycustomer = state.orders.forward_link(state.customers, o => [o.CustomerId])
 state.order_bycustomer = state.orders.link(state.customers, o => [o.CustomerId])
 
-state.customer_byid = state.customers.range_single(c => c.Id)
+state.customer_byid = state.customers.range_single(cu => cu.Id)
+// state.customer_byorder = state.customers.backward_link(state.orders, cu => state.order_bycustomer.lookup(cu.Id))
 
 const put = async (state, data) => {
   const diff = {}
@@ -121,13 +127,13 @@ const header = () => {
 
   link_dest_table.push('╭' + Array(67).fill('─').join('') + '╮')
   link_dest_table.push('│ ' + link_dests.map((id, index) => link_dest_desc[index].padEnd(link_dest_paddings[index], ' ')).join('') + '│'.padStart(35, ' '))
-  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
+  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].forward.filterindex, i => state[id].forward.cube.i2id(i).toString()[0]).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + '   duration'.padEnd(13, ' ') + 'action'.padEnd(21, ' ') + '│')
   link_dest_table.push('├' + Array(67).fill('─').join('') + '┤')
 }
 
 const body = (e, msg) => {
   cube_table.push('│ ' + cubes.map((id, index) => Array.from(state[id].filtered(Infinity)).map(d =>state[id].identity(d).toString()[0]).join(' ').padEnd(cube_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
-  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].filterindex, i => state[id].filterindex.get(i).count).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
+  link_dest_table.push('│ ' + link_dests.map((id, index) => Array.from(state[id].forward.filterindex, i => state[id].forward.filterindex.get(i).count).join(' ').padEnd(link_dest_paddings[index], ' ')).join('') + `   ${(e.duration / 1000).toFixed(4)}s   ` + (msg || '').padEnd(21, ' ') + '│')
 }
 
 const footer = () => {

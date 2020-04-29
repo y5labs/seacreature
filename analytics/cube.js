@@ -5,6 +5,7 @@ const RangeMultiple = require('./range_multiple')
 const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
 const Link = require('./link')
+const DuplexLink = require('./duplex_link')
 const LinkFilter = require('./linkfilter')
 const text = require('./text')
 const Hub = require('../lib/hub')
@@ -123,6 +124,9 @@ module.exports = identity => {
     backward,
     mark,
     dimensions,
+    onfiltered,
+    forward_links,
+    backward_links,
     range_single: map => {
       const dimension = RangeSingle(api, map)
       dimensions.push(dimension)
@@ -170,6 +174,9 @@ module.exports = identity => {
       dimension.on('filter changed', p => onfiltered(p))
       // dimension.on('trace', p => hub.emit('trace', p))
       return dimension
+    },
+    link: (source, map) => {
+      return DuplexLink(api, source, map)
     },
     backward_link: (source, map) => {
       const dimension = createlink(source, map)
