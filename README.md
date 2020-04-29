@@ -15,8 +15,15 @@ This is a developer friendly framework and includes libraries that can used in a
 
 
 # Todo
-- [ ] Fix analytics live updating. Things need to come out of null for links.
-- [ ] Should we consider PowerBI's 'highlight' functionality?
-- [ ] Update documentation to include analytics
-- [ ] Update documentation to include transactional
-- [ ] A real website for this project?
+- Seacreature Analytics — Auto generate backward link from same data as the forward link and use this backward link to publish change for the other cube when inserting data. This may need to record what was changed and publish later.
+- Seacreature Analytics — Get live updating to work
+- Seacreature Analytics — Convert Seacreature to https://volument.com/baretest
+- Seacreature Analytics — Vue power components for analytics
+- Seacreature Analytics — http://compromise.cool
+- Should we consider PowerBI's 'highlight' functionality?
+- Update documentation to include analytics
+- Update documentation to include transactional
+- A real website for this project?
+- Seacreature Dashboards — https://github.com/monitoror/monitoror
+- Seacreature ERP — table/index/key/columnName
+- Seacreature ERP — https://deno.land/

@@ -7,20 +7,13 @@
   The difficulty lies when new entries are added. Backward links use a static lookup so don't have their relation mapping and reference counts updated when new values are added. These changes are also not published across to other cubes so when new values are added to a cube that could potentially make entries visible in other cubes there is no way to communicate this information.
   
   A new structure needs to be created that represents and tracks both relationships at the same time. It would include functionality for both forward and backward link management including detecting changes across both cubes.
-  
 
 ## Questions
 - How can the seacreature analytics codebase be more testable and discoverable?
 - Should bit indicies be created for dimensions rather than they create themselves?
 - Should communications from dimensions back to cubes be duplex and single channel?
 - Can a test harness for the new link relationships manager be created?
-  
-
-
-## Todo
-- Auto generate backward link from same data as the forward link and use this backward link to publish change for the other cube when inserting data. This may need to record what was changed and publish later.
 
 # Performance
-
 `node --prof ./scratch.js`
 `node --prof-process --preprocess -j isolate*.log | flamebearer`
