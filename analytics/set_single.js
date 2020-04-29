@@ -87,7 +87,7 @@ module.exports = (cube, map) => {
   }
   const iterate = fn => function*(n) {
     if (n === 0) return
-    const keys = n > 0 ? filter : Array.from(filter).reverse()
+    const keys = n > 0 ? _set.keys() : Array.from(_set.keys()).reverse()
     const keyiterator = keys[Symbol.iterator]()
     while (n > 0) {
       const key = keyiterator.next()
