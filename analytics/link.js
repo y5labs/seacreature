@@ -3,7 +3,6 @@ const Hub = require('../lib/hub')
 
 module.exports = (cube, map) => {
   const forward = new Map()
-  const backward = new Map()
   let shownulls = true
   const nulls = new Set()
 
@@ -79,9 +78,9 @@ module.exports = (cube, map) => {
   api.filterindex = filterindex
   api.map = map
   api.forward = forward
-  api.backward = backward
   api.on = hub.on
   api.cube = cube
+  api.nulls = nulls
   api.batch = (dataindicies, put, del) => {
     filterindex.length(Math.max(...dataindicies.put) + 1)
     const diff = { put: [], del: [] }
@@ -104,9 +103,6 @@ module.exports = (cube, map) => {
     put.forEach((d, i) => {
       const keys = map(d) || []
       const index = dataindicies.put[i]
-      if (!backward.has(index))
-        backward.set(index, new Set())
-      const backwardnode = backward.get(index)
       if (keys.length == 0) {
         nulls.add(index)
         if (shownulls) diff.put.push(index)
@@ -114,16 +110,18 @@ module.exports = (cube, map) => {
       }
       let count = 0
       for (const key of keys) {
-        backwardnode.add(key)
         if (!forward.has(key)) forward.set(key, new Set())
         const indicies = forward.get(key)
         indicies.add(index)
         count++
       }
-      filterindex.set(index, {
+      const node = filterindex.get(index) || {
         count: 0,
-        total: count
-      })
+        total: 0
+      }
+      node.count += count
+      node.total += count
+      filterindex.set(index, node)
     })
     for (const i of diff.del)
       cube.filterbits[bitindex.offset][i] |= bitindex.one

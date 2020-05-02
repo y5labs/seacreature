@@ -35,21 +35,12 @@ const state = {
 }
 
 state.supplier_byid = state.suppliers.range_single(s => s.Id)
-// state.supplier_byproduct = state.suppliers.backward_link(state.products, s => state.product_bysupplier.lookup(s.Id))
-
 state.product_byid = state.products.range_single(p => p.Id)
-// state.product_bysupplier = state.products.forward_link(state.suppliers, p => [p.SupplierId])
 state.product_bysupplier = state.products.link(state.suppliers, p => [p.SupplierId])
-// state.product_byorder = state.products.backward_link(state.orders, p => state.order_byproduct.lookup(p.Id))
-
 state.order_byid = state.orders.range_single(o => o.Id)
-// state.order_byproduct = state.orders.forward_link(state.products, o => o.ProductIds)
 state.order_byproduct = state.orders.link(state.products, o => o.ProductIds)
-// state.order_bycustomer = state.orders.forward_link(state.customers, o => [o.CustomerId])
 state.order_bycustomer = state.orders.link(state.customers, o => [o.CustomerId])
-
 state.customer_byid = state.customers.range_single(cu => cu.Id)
-// state.customer_byorder = state.customers.backward_link(state.orders, cu => state.order_bycustomer.lookup(cu.Id))
 
 const put = async (state, data) => {
   const diff = {}
@@ -59,6 +50,8 @@ const put = async (state, data) => {
     await state[key].batch_calculate_link_change(diff[key].link_change)
   for (const key of Object.keys(diff))
     await state[key].batch_calculate_selection_change(diff[key].selection_change)
+  for (const key of Object.keys(data))
+    await state[key].recalc()
 }
 
 await put(state, data)
@@ -111,7 +104,7 @@ const cube_desc = ['SUPP', 'PROD', 'ORDER', 'CUSTOMR']
 const cube_paddings = [6, 8, 12, 7]
 
 const link_dests = ['product_bysupplier', 'order_byproduct', 'order_bycustomer']
-const link_dest_desc = ['S→P', 'P→O', 'C→O']
+const link_dest_desc = ['S → P', 'P → O', 'C → O']
 const link_dest_paddings = [8, 12, 12]
 // const link_dests = ['supplier_byproduct', 'product_bysupplier', 'product_byorder', 'order_byproduct', 'order_bycustomer', 'customer_byorder']
 // const link_dest_desc = ['P→S', 'S→P', 'O→P', 'P→O', 'C→O', 'O→C']

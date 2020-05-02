@@ -1,4 +1,10 @@
 const propagate = (index, cubes, forwards, backwards, fn) => {
+  for (const item of forwards)
+    if (item == null || item.lookup == null)
+      throw new Error('Forwards entry not correct')
+  for (const item of backwards)
+    if (item == null || item.lookup == null)
+      throw new Error('Backwards entry not correct')
   const payload = Array(backwards.length + 1 + forwards.length)
   const backward = (i, fn) => {
     if (i >= backwards.length) return forward(0, fn)

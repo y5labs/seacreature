@@ -4,7 +4,6 @@ const RangeSingle = require('./range_single')
 const RangeMultiple = require('./range_multiple')
 const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
-const Link = require('./link')
 const DuplexLink = require('./duplex_link')
 const LinkFilter = require('./linkfilter')
 const text = require('./text')
@@ -25,6 +24,14 @@ const visit = async (cube, fn) => {
   }
 }
 
+const applydel = async (cube, del) => {
+  for (const [target, dimension] of cube.forward.entries()) {
+    const changes = await dimension({ del: del.map(cube.i2id) })
+    if (changes.del.length > 0)
+      await target.linkfilter({ del: changes.del })
+  }
+}
+
 module.exports = identity => {
   const hub = Hub()
   const data = new Map()
@@ -36,6 +43,7 @@ module.exports = identity => {
 
   const forward_links = []
   const backward_links = []
+  const duplex_links = []
   const forward = new Map()
   const backward = new Map()
   const mark = []
@@ -70,42 +78,8 @@ module.exports = identity => {
       del: diff.del.map(i2d)
     })
 
-    const applydel = async (cube, del) => {
-      for (const [target, dimension] of cube.forward.entries()) {
-        const changes = await dimension({ del: del.map(cube.i2id) })
-        if (changes.del.length > 0) {
-          await target.linkfilter({ del: changes.del })
-        }
-      }
-    }
-
-    if (shouldrecalc) {
-      await visit(api, async cube => {
-        for (const [target, dimension] of cube.forward.entries()) {
-          const changes = await dimension.reset()
-          if (changes.length > 0)
-            await target.linkfilter({ put: changes })
-        }
-      })
-      await visit(api, async cube => {
-        await applydel(cube, Array.from(cube.hiddenindicies()))
-      })
-      return
-    }
-    else if (diff.del.length > 0)
-      await applydel(api, diff.del)
-  }
-
-  const createlink = (source, map) => {
-    if (source.forward.has(api))
-      throw new Error('Cubes are already linked')
-    const dimension = Link(api, map)
-    dimensions.push(dimension)
-    dimension.on('filter changed', p => onfiltered(p))
-    source.forward.set(api, dimension)
-    api.backward.set(source, dimension)
-    dimension.source = source
-    return dimension
+    if (shouldrecalc) return await api.recalc()
+    else if (diff.del.length > 0) await applydel(api, diff.del)
   }
 
   const api = {
@@ -127,6 +101,19 @@ module.exports = identity => {
     onfiltered,
     forward_links,
     backward_links,
+    duplex_links,
+    recalc: async () => {
+      await visit(api, async cube => {
+        for (const [target, dimension] of cube.forward.entries()) {
+          const changes = await dimension.reset()
+          if (changes.length > 0)
+            await target.linkfilter({ put: changes })
+        }
+      })
+      await visit(api, async cube => {
+        await applydel(cube, Array.from(cube.hiddenindicies()))
+      })
+    },
     range_single: map => {
       const dimension = RangeSingle(api, map)
       dimensions.push(dimension)
@@ -177,16 +164,6 @@ module.exports = identity => {
     },
     link: (source, map) => {
       return DuplexLink(api, source, map)
-    },
-    backward_link: (source, map) => {
-      const dimension = createlink(source, map)
-      backward_links.push(dimension)
-      return dimension
-    },
-    forward_link: (source, map) => {
-      const dimension = createlink(source, map)
-      forward_links.push(dimension)
-      return dimension
     },
     batch_calculate_link_change: async ({ indicies, put, del }) => {
       for (const d of backward_links) await d.batch(indicies, put, del)

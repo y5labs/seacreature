@@ -90,8 +90,8 @@ hub.on('load projections', async () => {
   state.cube.countrybycustomerspend = {}
   const orderitemsintocustomers = Projection(
     [state.cube.orderitems, state.cube.orders, state.cube.customers],
-    [state.cube.order_byorderitem, state.cube.customer_byorder],
-    [state.cube.order_bycustomer, state.cube.orderitem_byorder],
+    [state.cube.orderitem_byorder.backward, state.cube.order_bycustomer.backward],
+    [state.cube.order_bycustomer.forward, state.cube.orderitem_byorder.forward],
     ({ put, del }) => {
       del.forEach(([ orderitemid, orderid, customerid ]) => {
         const customer = state.cube.customers.id2d(customerid)
@@ -116,8 +116,8 @@ hub.on('load projections', async () => {
   state.cube.countrybysupplierspend = {}
   const orderitemsintosuppliers = Projection(
     [state.cube.orderitems, state.cube.products, state.cube.suppliers],
-    [state.cube.product_byorderitem, state.cube.supplier_byproduct],
-    [state.cube.product_bysupplier, state.cube.orderitem_byproduct],
+    [state.cube.orderitem_byproduct.backward, state.cube.product_bysupplier.backward],
+    [state.cube.product_bysupplier.forward, state.cube.orderitem_byproduct.forward],
     ({ put, del }) => {
       del.forEach(([ orderitemid, productid, supplierid ]) => {
         const supplier = state.cube.suppliers.id2d(supplierid)
@@ -141,8 +141,8 @@ hub.on('load projections', async () => {
   state.cube.productbyunits = {}
   const productbyunits = Projection(
     [state.cube.orderitems, state.cube.products],
-    [state.cube.product_byorderitem],
-    [state.cube.orderitem_byproduct],
+    [state.cube.orderitem_byproduct.backward],
+    [state.cube.orderitem_byproduct.forward],
     ({ put, del }) => {
       del.forEach(([ orderitemid, productid ]) => {
         const orderitem = state.cube.orderitems.id2d(orderitemid)
@@ -161,8 +161,8 @@ hub.on('load projections', async () => {
   state.cube.productsbycustomer = {}
   const productsintocustomers = Projection(
     [state.cube.products, state.cube.orderitems, state.cube.orders, state.cube.customers],
-    [state.cube.orderitem_byproduct, state.cube.order_byorderitem, state.cube.customer_byorder],
-    [state.cube.order_bycustomer, state.cube.orderitem_byorder, state.cube.product_byorderitem],
+    [state.cube.orderitem_byproduct.forward, state.cube.orderitem_byorder.backward, state.cube.order_bycustomer.backward],
+    [state.cube.order_bycustomer.forward, state.cube.orderitem_byorder.forward, state.cube.orderitem_byproduct.backward],
     ({ put, del }) => {
       del.forEach(([ productid, orderitemid, orderid, customerid ]) => {
         const quantity = state.cube.orderitems.id2d(orderitemid).Quantity
@@ -177,9 +177,25 @@ hub.on('load projections', async () => {
 
   state.cube.countrymovements = {}
   const suppliersintocustomers = Projection(
-    [state.cube.suppliers, state.cube.products, state.cube.orderitems, state.cube.orders, state.cube.customers],
-    [state.cube.product_bysupplier, state.cube.orderitem_byproduct, state.cube.order_byorderitem, state.cube.customer_byorder],
-    [state.cube.order_bycustomer, state.cube.orderitem_byorder, state.cube.product_byorderitem, state.cube.supplier_byproduct],
+    [
+      state.cube.suppliers,
+      state.cube.products,
+      state.cube.orderitems,
+      state.cube.orders,
+      state.cube.customers
+    ],
+    [
+      state.cube.product_bysupplier.forward,
+      state.cube.orderitem_byproduct.forward,
+      state.cube.orderitem_byorder.backward,
+      state.cube.order_bycustomer.backward
+    ],
+    [
+      state.cube.order_bycustomer.forward,
+      state.cube.orderitem_byorder.forward,
+      state.cube.orderitem_byproduct.backward,
+      state.cube.product_bysupplier.backward
+    ],
     ({ put, del }) => {
       del.forEach(([ supplierid, productid, orderitemid, orderid, customerid ]) => {
         const quantity = state.cube.orderitems.id2d(orderitemid).Quantity
@@ -241,22 +257,19 @@ c.supplier_city = c.suppliers.set_single(s => s.City)
 c.supplier_country = c.suppliers.set_single(s => s.Country)
 c.supplier_byphone = c.suppliers.range_single(s => s.Phone)
 c.supplier_byfax = c.suppliers.range_single(s => s.Fax)
-c.supplier_byproduct = c.suppliers.backward_link(c.products, s => c.product_bysupplier.lookup(s.Id))
 
 c.product_byid = c.products.range_single(p => p.Id)
 c.product_byproductname = c.products.range_single(p => p.ProductName)
-c.product_bysupplier = c.products.forward_link(c.suppliers, p => [p.SupplierId])
+c.product_bysupplier = c.products.link(c.suppliers, p => [p.SupplierId])
 c.product_byunitprice = c.products.range_single(p => p.UnitPrice)
 c.product_bypackage = c.products.range_multiple_text(p => p.Package, stemmer)
 c.product_byisdiscontinued = c.products.range_single(p => p.IsDiscontinued)
-c.product_byorderitem = c.products.backward_link(c.orderitems, p => c.orderitem_byproduct.lookup(p.Id))
 
 c.order_byid = c.orders.range_single(o => o.Id)
 c.order_bytime = c.orders.range_single(o => o.ts)
-c.order_bycustomer = c.orders.forward_link(c.customers, o => [o.CustomerId])
+c.order_bycustomer = c.orders.link(c.customers, o => [o.CustomerId])
 c.order_bytotalamount = c.orders.range_single(o => o.TotalAmount)
 c.order_byordernumber = c.orders.range_single(o => o.OrderNumber)
-c.order_byorderitem = c.orders.backward_link(c.orderitems, o => c.orderitem_byorder.lookup(o.Id))
 
 c.customer_byid = c.customers.range_single(u => u.Id)
 c.customer_byfirstname = c.customers.range_single(u => u.FirstName)
@@ -264,11 +277,10 @@ c.customer_bylastname = c.customers.range_single(u => u.LastName)
 c.customer_city = c.customers.set_single(u => u.City)
 c.customer_country = c.customers.set_single(u => u.Country)
 c.customer_byphone = c.customers.range_single(u => u.Phone)
-c.customer_byorder = c.customers.backward_link(c.orders, u => c.order_bycustomer.lookup(u.Id))
 
 c.orderitem_byid = c.orderitems.range_single(i => i.Id)
-c.orderitem_byorder = c.orderitems.forward_link(c.orders, i => [i.OrderId])
-c.orderitem_byproduct = c.orderitems.forward_link(c.products, i => [i.ProductId])
+c.orderitem_byorder = c.orderitems.link(c.orders, i => [i.OrderId])
+c.orderitem_byproduct = c.orderitems.link(c.products, i => [i.ProductId])
 c.orderitem_byunitprice = c.orderitems.range_single(i => i.UnitPrice)
 c.orderitem_byquantity = c.orderitems.range_single(i => i.Quantity)
 c.orderitem_byprice = c.orderitems.range_single(i => i.UnitPrice * i.Quantity)
