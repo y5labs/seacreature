@@ -4,7 +4,7 @@ const RangeSingle = require('./range_single')
 const RangeMultiple = require('./range_multiple')
 const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
-const DuplexLink = require('./duplex_link')
+const LinkDuplex = require('./linkduplex')
 const LinkFilter = require('./linkfilter')
 const text = require('./text')
 const Hub = require('../lib/hub')
@@ -46,7 +46,6 @@ module.exports = identity => {
   const duplex_links = []
   const forward = new Map()
   const backward = new Map()
-  const mark = []
 
   const i2d = i => data.get(index.get(i))
   const i2id = i => index.get(i)
@@ -96,7 +95,6 @@ module.exports = identity => {
     index,
     forward,
     backward,
-    mark,
     dimensions,
     onfiltered,
     forward_links,
@@ -163,7 +161,7 @@ module.exports = identity => {
       return dimension
     },
     link: (source, map) => {
-      return DuplexLink(api, source, map)
+      return LinkDuplex(api, source, map)
     },
     batch_calculate_link_change: async ({ indicies, put, del }) => {
       for (const d of backward_links) await d.batch(indicies, put, del)
@@ -217,8 +215,6 @@ module.exports = identity => {
         link_change: { indicies, put, del }
       }
       filterbits.lengthen(index.length())
-      const existing = mark.length
-      mark.length = index.length()
       for (const i of indicies.put) filterbits.clear(i)
       for (const d of internal_dimensions) d.batch(indicies, put, del)
       for (const d of forward_links) d.batch(indicies, put, del)
@@ -239,7 +235,6 @@ module.exports = identity => {
       i = iterator.next()
     }
   }
-  api.highlighted = iterate(i => filterbits.zero(i))
   api.filtered = iterate(i => filterbits.zero(i))
   api.unfiltered = iterate(i => true)
   api.hiddenindicies = function*() {

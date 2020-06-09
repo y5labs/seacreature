@@ -178,7 +178,7 @@ module.exports = (cube, map) => {
         _set.get(key).delete(index)
       }
       if (count > 0) diff.del.push(index)
-      filterindex.set(index, null)
+      filterindex.remove(index)
     })
     put.forEach((d, i) => {
       const keys = map(d) || []

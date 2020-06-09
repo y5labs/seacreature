@@ -149,7 +149,7 @@ module.exports = (cube, map) => {
           apply.del.push([key, index])
         }
         if (count > 0) diff.del.push(index)
-        filterindex.set(index, null)
+        filterindex.remove(index)
       }
     })
     put.forEach((d, i) => {

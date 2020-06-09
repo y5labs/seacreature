@@ -96,6 +96,29 @@ const scenario2 = async fn => {
   await state.order_byid(null)
   fn(pf(), 'Order - null')
 }
+const scenario3 = async fn => {
+  fn(pf())
+  const diff = await state.orders.batch({ del: [{
+    Id: 5,
+    CustomerId: 'Sue',
+    ProductIds: ['Eggplant']
+  }] })
+  await state.orders.batch_calculate_link_change(diff.link_change)
+  await state.orders.batch_calculate_selection_change(diff.selection_change)
+  fn(pf(), 'Removed new order')
+  console.log('Order - 3')
+  await state.order_byid(3)
+  fn(pf(), 'Order - 3')
+  console.log('Product - Drink')
+  await state.product_byid('Drink')
+  fn(pf(), 'Product - Drink')
+  console.log('Product - null')
+  await state.product_byid(null)
+  fn(pf(), 'Product - null')
+  console.log('Order - null')
+  await state.order_byid(null)
+  fn(pf(), 'Order - null')
+}
 
 perf()
 
@@ -150,6 +173,19 @@ link_dest_table.length = 0
 
 header()
 await scenario2(body)
+footer()
+console.log('CUBES')
+console.log(cube_table.join('\n'))
+console.log('FILTERINDEX')
+console.log(link_dest_table.join('\n'))
+console.log()
+
+cube_table.length = 0
+link_dest_table.length = 0
+
+
+header()
+await scenario3(body)
 footer()
 console.log('CUBES')
 console.log(cube_table.join('\n'))

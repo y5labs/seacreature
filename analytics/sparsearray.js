@@ -8,8 +8,7 @@ function SparseArray(n = 0) {
 
 SparseArray.prototype.length = function(n) {
   if (!n) return this._length
-  if (n < this._length)
-    throw new Error('Can not get smaller')
+  if (n < this._length) return
   while (n > this._length) {
     this._length++
     this._array.push(null)

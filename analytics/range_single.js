@@ -54,7 +54,7 @@ module.exports = (cube, map) => {
     })
   }
   api.filter = filter
-  const iterate = (startfn, endfn, fn) => function*(n) {
+  const iterate = (startfn, endfn, fn, map = cube.i2d) => function*(n) {
     start = startfn()
     end = endfn()
     if (n === 0) return
@@ -62,7 +62,7 @@ module.exports = (cube, map) => {
       let i = start
       while (n > 0 && i <= end) {
         if (fn(_range[i][1])) {
-          yield [_range[i][0], cube.i2d(_range[i][1])]
+          yield [_range[i][0], map(_range[i][1])]
           n--
         }
         i++
@@ -72,7 +72,7 @@ module.exports = (cube, map) => {
       let i = end
       while (n < 0 && i >= start) {
         if (fn(_range[i][1])) {
-          yield [_range[i][0], cube.i2d(_range[i][1])]
+          yield [_range[i][0], map(_range[i][1])]
           n++
         }
         i--
@@ -83,7 +83,7 @@ module.exports = (cube, map) => {
       const item = iterator.next()
       if (item.done) break
       if (fn(item.value)) {
-        yield [null, cube.i2d(item.value)]
+        yield [null, map(item.value)]
         n--
       }
     }
@@ -104,6 +104,15 @@ module.exports = (cube, map) => {
     () => 0,
     () => _range.length - 1,
     i => true)
+  api.all = iterate(
+    () => 0,
+    () => _range.length - 1,
+    i => true,
+    i => ({
+      d: cube.i2d(i),
+      isfiltered: cube.filterbits.zero(i),
+      iscontext: cube.filterbits.zeroExcept(i, bitindex.offset, ~bitindex.one)
+    }))
   api.batch = (dataindicies, put, del) => {
     // console.log(
     //   '   range_single',

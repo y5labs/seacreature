@@ -74,6 +74,7 @@ module.exports = (cube, map) => {
       put: []
     })
   }
+  api.shownulls = () => shownulls
   api.bitindex = bitindex
   api.filterindex = filterindex
   api.map = map
@@ -98,7 +99,7 @@ module.exports = (cube, map) => {
         indicies.delete(index)
       }
       if (count > 0) diff.del.push(index)
-      filterindex.set(index, null)
+      filterindex.remove(index)
     })
     put.forEach((d, i) => {
       const keys = map(d) || []

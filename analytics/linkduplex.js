@@ -31,7 +31,9 @@ module.exports = (from, to, map) => {
         const node = backward.forward.get(id)
         if (node.has(index)) {
           node.delete(index)
-          if (node.size == 0) nulls.add(index)
+          if (node.size == 0) {
+            backward.nulls.add(index)
+          }
         }
       }
     }

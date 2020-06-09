@@ -36,7 +36,7 @@ module.exports = cube => {
     del.forEach((d, i) => {
       const index = dataindicies.del[i]
       diff.del.push(index)
-      filterindex.set(index, null)
+      filterindex.remove(index)
     })
     put.forEach((d, i) => {
       const index = dataindicies.put[i]
