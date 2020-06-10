@@ -12,6 +12,7 @@ module.exports = (cube, map) => {
   const bitindex = cube.filterbits.add()
 
   const api = async (lo, hi) => {
+    if (lo == -0) lo = 0
     if (hi === undefined) hi = lo
     // console.log(
     //   '   range_single',
@@ -19,6 +20,7 @@ module.exports = (cube, map) => {
     //   (hi ? hi.toString() : 'null').padStart(5, ' ') + ' ←   ',
     //   map.toString()
     // )
+    // console.log({ filter, indicies, lo, hi })
     const indicies_new = RangeIndex.update(
       _range, filter, indicies, lo, hi)
     const diff = RangeIndex.indicies_diff(

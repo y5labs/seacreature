@@ -4,7 +4,7 @@ const RangeSingle = require('./range_single')
 
 module.exports = cube => {
   const hub = Hub()
-  const bitindex = cube.filterbits.add()
+  const orbitindex = cube.filterbits.add()
   const filterbits = new BitArray()
   const dimensions = []
   const onfiltered = async ({ bitindex, put, del }) => {
@@ -21,10 +21,10 @@ module.exports = cube => {
       filterbits[bitindex.offset][i] &= ~bitindex.one
     }
 
-    await hub.emit('filter changed', { bitindex, ...diff })
+    await hub.emit('filter changed', { bitindex: orbitindex, ...diff })
   }
   const api = {
-    bitindex,
+    orbitindex,
     on: hub.on,
     filterbits,
     i2d: cube.i2d,
@@ -44,9 +44,9 @@ module.exports = cube => {
         }
       }
       for (const i of diff.del)
-        cube.filterbits[bitindex.offset][i] |= bitindex.one
+        cube.filterbits[orbitindex.offset][i] |= orbitindex.one
       for (const i of diff.put)
-        cube.filterbits[bitindex.offset][i] &= ~bitindex.one
+        cube.filterbits[orbitindex.offset][i] &= ~orbitindex.one
       hub.emit('batch', { put, del, diff })
       return diff
     },

@@ -6,9 +6,11 @@ const bisect_left = (a, x, lo, hi) => {
   lo = Math.max(lo, 0)
   while (lo < hi) {
     const mid = lo + hi >>> 1
+    // if (a[mid] == null) console.log({ a, x, lo, hi })
     if (a[mid][0] < x) lo = mid + 1
     else hi = mid
   }
+  lo = Math.min(a.length - 1, lo)
   if (a[lo][0] < x) return lo + 1
   return lo
 }
@@ -18,9 +20,11 @@ const bisect_right = (a, x, lo, hi) => {
   lo = Math.max(lo, 0)
   while (lo < hi) {
     let mid = (lo + hi >>> 1) + 1
+    // if (a[mid] == null) console.log({ a, x, lo, hi })
     if (a[mid][0] > x) hi = mid - 1
     else lo = mid
   }
+  lo = Math.min(a.length - 1, lo)
   if (a[lo][0] > x) return lo - 1
   return lo
 }
@@ -77,11 +81,12 @@ const update = (range, filter, indicies, lo, hi) => ([
 
 const indicies_diff = (prev, now) => {
   // no overlap
-  if (prev[1] < now[0] || prev[0] > now[1])
+  if (prev[1] < now[0] || prev[0] > now[1]) {
     return {
       del: range(prev[0], prev[1]),
       put: range(now[0], now[1])
     }
+  }
 
   const result = {
     put: [],
@@ -102,8 +107,10 @@ const indicies_diff = (prev, now) => {
   return result
 }
 
-const range = (start, end) =>
-  new Array(end - start + 1).fill().map((d, i) => i + start)
+const range = (start, end) => {
+  if (end < start) return []
+  return new Array(end - start + 1).fill().map((d, i) => i + start)
+}
 
 // Sort function for a range
 const sort = (a, b) =>
