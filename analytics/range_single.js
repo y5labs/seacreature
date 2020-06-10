@@ -14,6 +14,7 @@ module.exports = (cube, map) => {
   const api = async (lo, hi) => {
     if (lo == -0) lo = 0
     if (hi === undefined) hi = lo
+    if (lo == filter[0] && hi == filter[1]) return
     // console.log(
     //   '   range_single',
     //   (lo ? lo.toString() : 'null').padStart(5, ' ') + ' →',
@@ -25,6 +26,7 @@ module.exports = (cube, map) => {
       _range, filter, indicies, lo, hi)
     const diff = RangeIndex.indicies_diff(
       indicies, indicies_new)
+    // console.log({ indicies_new, indicies, diff })
     filter[0] = lo
     filter[1] = hi
     indicies[0] = indicies_new[0]

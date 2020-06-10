@@ -4,10 +4,11 @@
 // Locate the first instance of x or the first item larger
 const bisect_left = (a, x, lo, hi) => {
   lo = Math.max(lo, 0)
+  // hi = Math.min(hi, a.length - 1)
   while (lo < hi) {
     const mid = lo + hi >>> 1
     // if (a[mid] == null) console.log({ a, x, lo, hi })
-    if (a[mid][0] < x) lo = mid + 1
+    if (a[mid] && a[mid][0] < x) lo = mid + 1
     else hi = mid
   }
   lo = Math.min(a.length - 1, lo)
@@ -18,10 +19,11 @@ const bisect_left = (a, x, lo, hi) => {
 // Locate the last instance of x or the last item smaller
 const bisect_right = (a, x, lo, hi) => {
   lo = Math.max(lo, 0)
+  // hi = Math.min(hi, a.length - 1)
   while (lo < hi) {
     let mid = (lo + hi >>> 1) + 1
     // if (a[mid] == null) console.log({ a, x, lo, hi })
-    if (a[mid][0] > x) hi = mid - 1
+    if (a[mid] && a[mid][0] > x) hi = mid - 1
     else lo = mid
   }
   lo = Math.min(a.length - 1, lo)
@@ -74,10 +76,14 @@ const update_right = (range, filter, indicies, hi) => {
 }
 
 // Update the related structures for filtering
-const update = (range, filter, indicies, lo, hi) => ([
-  update_left(range, filter, indicies, lo),
-  update_right(range, filter, indicies, hi)
-])
+const update = (range, filter, indicies, lo, hi) => {
+  const res = [
+    update_left(range, filter, indicies, lo),
+    update_right(range, filter, indicies, hi)
+  ]
+  if (res[0] > res[1]) return [res[1], res[0]]
+  return res
+}
 
 const indicies_diff = (prev, now) => {
   // no overlap
@@ -108,7 +114,7 @@ const indicies_diff = (prev, now) => {
 }
 
 const range = (start, end) => {
-  if (end < start) return []
+  if (end < 0 || start < 0 || end < start) return []
   return new Array(end - start + 1).fill().map((d, i) => i + start)
 }
 
