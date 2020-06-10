@@ -21,12 +21,10 @@ module.exports = (cube, map) => {
     //   (hi ? hi.toString() : 'null').padStart(5, ' ') + ' ←   ',
     //   map.toString()
     // )
-    // console.log({ filter, indicies, lo, hi })
     const indicies_new = RangeIndex.update(
       _range, filter, indicies, lo, hi)
     const diff = RangeIndex.indicies_diff(
       indicies, indicies_new)
-    // console.log({ indicies_new, indicies, diff })
     filter[0] = lo
     filter[1] = hi
     indicies[0] = indicies_new[0]

@@ -4,30 +4,24 @@
 // Locate the first instance of x or the first item larger
 const bisect_left = (a, x, lo, hi) => {
   lo = Math.max(lo, 0)
-  // hi = Math.min(hi, a.length - 1)
   while (lo < hi) {
     const mid = lo + hi >>> 1
-    // if (a[mid] == null) console.log({ a, x, lo, hi })
-    if (a[mid] && a[mid][0] < x) lo = mid + 1
+    if (a[mid][0] < x) lo = mid + 1
     else hi = mid
   }
   lo = Math.min(a.length - 1, lo)
-  if (a[lo][0] < x) return lo + 1
   return lo
 }
 
 // Locate the last instance of x or the last item smaller
 const bisect_right = (a, x, lo, hi) => {
   lo = Math.max(lo, 0)
-  // hi = Math.min(hi, a.length - 1)
   while (lo < hi) {
     let mid = (lo + hi >>> 1) + 1
-    // if (a[mid] == null) console.log({ a, x, lo, hi })
-    if (a[mid] && a[mid][0] > x) hi = mid - 1
+    if (a[mid][0] > x) hi = mid - 1
     else lo = mid
   }
   lo = Math.min(a.length - 1, lo)
-  if (a[lo][0] > x) return lo - 1
   return lo
 }
 

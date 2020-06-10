@@ -10,8 +10,6 @@ module.exports = cube => {
   const onfiltered = async ({ bitindex, put, del }) => {
     if (put.length == 0 && del.length == 0) return
 
-    // console.log('or onfilter', { put, del })
-
     const diff = { put: [], del: [] }
 
     for (const i of del) {
