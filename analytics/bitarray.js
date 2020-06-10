@@ -84,6 +84,14 @@ BitArray.prototype.zero = function(n) {
   return true
 }
 
+// Checks that all bits for the given index are 1
+BitArray.prototype.all = function(n) {
+  for (let i = 0, len = this.subarrays; i < len; ++i) {
+    if (this[i][n] != this.masks[i]) return false
+  }
+  return true
+}
+
 BitArray.prototype.clear = function(n) {
   for (let i = 0, len = this.subarrays; i < len; ++i) this[i][n] = 0
 }

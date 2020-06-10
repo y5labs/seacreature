@@ -112,8 +112,6 @@ module.exports = (cube, map) => {
       }
     }
   }
-  api.highlighted = iterate(
-    i => cube.filterbits.zero(i) && cube.linkbits.zero(i))
   api.filtered = iterate(
     i => cube.filterbits.zero(i))
   api.context = iterate(

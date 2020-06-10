@@ -6,6 +6,7 @@ const SetSingle = require('./set_single')
 const SetMultiple = require('./set_multiple')
 const LinkDuplex = require('./linkduplex')
 const LinkFilter = require('./linkfilter')
+const Or = require('./or')
 const text = require('./text')
 const Hub = require('../lib/hub')
 
@@ -154,6 +155,14 @@ module.exports = identity => {
     },
     set_multiple: map => {
       const dimension = SetMultiple(api, map)
+      dimensions.push(dimension)
+      internal_dimensions.push(dimension)
+      dimension.on('filter changed', p => onfiltered(p))
+      // dimension.on('trace', p => hub.emit('trace', p))
+      return dimension
+    },
+    or: () => {
+      const dimension = Or(api)
       dimensions.push(dimension)
       internal_dimensions.push(dimension)
       dimension.on('filter changed', p => onfiltered(p))

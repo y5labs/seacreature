@@ -88,10 +88,6 @@ module.exports = (cube, map) => {
       }
     }
   }
-  api.highlighted = iterate(
-    () => indicies[0],
-    () => indicies[1],
-    i => cube.filterbits.zero(i) && cube.linkbits.zero(i))
   api.filtered = iterate(
     () => indicies[0],
     () => indicies[1],
