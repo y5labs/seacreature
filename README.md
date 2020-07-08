@@ -15,6 +15,8 @@ This is a developer friendly framework and includes libraries that can used in a
 
 
 # Todo
+- Seacreature Analytics — Change sparsearray to https://github.com/mafintosh/freemap/blob/master/index.js
+- https://github.com/mafintosh/flat-tree
 - Seacreature Analytics — Auto generate backward link from same data as the forward link and use this backward link to publish change for the other cube when inserting data. This may need to record what was changed and publish later.
 - Seacreature Analytics — Get live updating to work
 - Seacreature Analytics — Convert Seacreature to https://volument.com/baretest
