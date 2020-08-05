@@ -80,6 +80,14 @@ module.exports = (cube, map) => {
       }
     }
     else {
+      let i = end
+      while (n < 0 && i >= start) {
+        if (fn(_range[i][1])) {
+          yield [_range[i][0], map(_range[i][1])]
+          n++
+        }
+        i--
+      }
       const iterator = nulls[Symbol.iterator]()
       while (n < 0) {
         const item = iterator.next()
@@ -88,14 +96,6 @@ module.exports = (cube, map) => {
           yield [null, map(item.value)]
           n++
         }
-      }
-      let i = end
-      while (n < 0 && i >= start) {
-        if (fn(_range[i][1])) {
-          yield [_range[i][0], map(_range[i][1])]
-          n++
-        }
-        i--
       }
     }
   }
