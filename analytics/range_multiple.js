@@ -86,8 +86,26 @@ module.exports = (cube, map) => {
         }
         i++
       }
+      const iterator = nulls[Symbol.iterator]()
+      while (n > 0) {
+        const item = iterator.next()
+        if (item.done) break
+        if (fn(item.value)) {
+          yield [null, cube.i2d(item.value)]
+          n--
+        }
+      }
     }
     else {
+      const iterator = nulls[Symbol.iterator]()
+      while (n < 0) {
+        const item = iterator.next()
+        if (item.done) break
+        if (fn(item.value)) {
+          yield [null, cube.i2d(item.value)]
+          n++
+        }
+      }
       let i = end
       while (n < 0 && i >= start) {
         if (fn(_range[i][1])) {
@@ -95,15 +113,6 @@ module.exports = (cube, map) => {
           n++
         }
         i--
-      }
-    }
-    const iterator = nulls[Symbol.iterator]()
-    while (n > 0) {
-      const item = iterator.next()
-      if (item.done) break
-      if (fn(item.value)) {
-        yield [null, cube.i2d(item.value)]
-        n--
       }
     }
   }
