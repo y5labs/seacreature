@@ -24,7 +24,7 @@ module.exports = (dataset = []) => {
     _forward,
     _backward,
     // Apply a collection of additions and deletions to the dataset
-    apply: ({ put = [], del = [] }) => {
+    batch: ({ put = [], del = [] }) => {
       for (const o of put) {
         pathie.set(_forward, [o[0], o[1], o[2]], true)
         pathie.set(_backward, [o[0], o[2], o[1]], true)
