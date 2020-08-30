@@ -16,7 +16,9 @@
     "url": "https://github.com/tcoats/seacreature/issues"
   },
   "homepage": "https://github.com/tcoats/seacreature#readme",
-  "dependencies": {},
+  "dependencies": {
+    "useragent": "^2.3.0"
+  },
   "devDependencies": {
     "jest": "^25.5.1"
   }
