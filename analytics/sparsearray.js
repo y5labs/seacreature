@@ -28,7 +28,7 @@ SparseArray.prototype.add = function(item) {
     this._length++
     return this._array.push(item) - 1
   }
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < this._array.length; i++) {
     if (this._array[i] === null) {
       this._array[i] = item
       this._length++
