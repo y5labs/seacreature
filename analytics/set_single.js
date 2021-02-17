@@ -63,6 +63,8 @@ module.exports = (cube, map) => {
   api.bitindex = bitindex
   api.on = hub.on
   api.filter = filter
+  api.keys = () => Array.from(_set.keys(), key => [key, filter.has(key)])
+  api.keys_size = () => _set.size
   api.selectall = async () => {
     autoexpand = true
     const put = []
