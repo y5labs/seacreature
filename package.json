@@ -17,6 +17,6 @@
   },
   "homepage": "https://github.com/tcoats/seacreature#readme",
   "devDependencies": {
-    "jest": "^25.5.1"
+    "jest": "^27.0.4"
   }
 }
