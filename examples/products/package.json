@@ -17,7 +17,7 @@
     "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "http-mutunga": "^1.0.0",
-    "luxon": "^1.23.0",
+    "luxon": "^2.5.2",
     "numeral": "^2.0.6",
     "papaparse": "^5.2.0",
     "seacreature": "^2.2.0",
